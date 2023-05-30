@@ -1,8 +1,52 @@
 # Notes concerning the simulated_data conversion
 
-## Data summary
+## Reading RDB files
 
-Data are stored as lists of (id, dict) in each stream. Here is an overview of each data stream in the RDB file: *(bold question marks means need to seek clarification on units, etc.)*
+Start server from shell with
+
+```
+redis-server --dir /path/to/rdb --dbfilename rdbname.rdb --port 6379
+```
+
+Then, in Python:
+
+```
+import redis
+r = redis.Redis(port=6379, host="localhost")
+r.ping() # check connection
+```
+
+View all streams:
+```
+r.keys()
+```
+
+View stream length:
+```
+r.xlen()
+```
+
+Get all entries from stream:
+```
+r.xrange(stream_name)
+```
+
+Get select entries from stream:
+```
+r.xrange(stream_name, min=min, max=max, count=count)
+```
+`min='-'` means earliest available entry, `max='+'` means latest. `count` takes precedence over `min` and `max`, starting from the earliest entry.
+
+Output of `r.xrange()` is a list of length-2 tuples. Each tuple contains an ID and a dict of data. The IDs are Unix millisecond timestamps. When multiple entries occur in the same millisecond, IDs are appended with `-0`, `-1`, etc. in order. All keys and values are bytestrings (so we must prepend keys with `b'` to access).
+
+Much of the data are likely stored as byte buffers of numpy arrays, which can be read with
+```
+np.frombuffer(bytestring, dtype=dtype)
+```
+
+## Raw data summary
+
+Here is an overview of each data stream in the RDB file: *(bold question marks means need to seek clarification on units, etc.)*
 
 - `"supergraph_stream"` - List of length 1. The singular dict has 1 key, `"data"`, which maps to a massive JSON dict, which has keys:
   - `"redis_host"` - IP address of Redis instance, `192.168.137.30`
@@ -27,19 +71,80 @@ Data are stored as lists of (id, dict) in each stream. Here is an overview of ea
 - `"booter_status"` - List of length 1. Status of second computer, nothing particulary useful.
 - `"trial_info"` - List of length 40. Information about each trial, obviously. Keys:
   - `"trialNum"` - int indicating trial number (0 - 39)
-  - **????** `"trialStart"` - raw bytes timestamp, not sure what format? Ex: `b'g\xfd\xcf\x1dT\xfd\xd8A' = 0x67fdcd1d54fdd841`
+  - **????** `"trialStart"` - raw bytes timestamp, not sure what format? Ex: `b'g\xfd\xcf\x1dT\xfd\xd8A' = 0x67fdcd1d54fdd841`. **Update: appears to be float64 Unix (submillisecond) timestamp!**
   - **????** `"trialEnd"` - same as `"trialStart"`. Ex: `b'c\xcds!T\xfd\xd8A' = 0x63cd732154fdd841`
   - **????** `"delay"` - int indicating some sort of delay, but not sure what delay? Potentially in milliseconds? Ex: 3580
   - **????** `"interTrialSleep"` - intertrial interval between current and next trial (or previous and current trial)? in milliseconds? Ex: 2000
   - `"sentenceCue"` - text sentence used as audio input/decoding target for the trial
 - `"binned:decoderOutput:stream"` - List of length 5750. Output of brain-to-text decoder. Entries follow the pattern \[start, logits, decoded sentence so far, logits, decoded sentence so far, ... , logits, final decoded sentence, start, logits ...\]. 
-  - **????** entry ID for each dict - may be timestamp? Ex: `b'1677021306179-0'`
-  - start dict - has one key, `"start"`, which maps to corresponding entry ID which might be a timestamp? Ex: `b'1677021306179-0'`
-  - **????** logits dict - has one key, `"logits"`, which maps to byte sequence. Not sure how to read byte sequence. Ex: `b'\x8c\x99\xb0A\x82P\x14A\xc2\x81\xa5\xc0P3\x96\xc0A\xbd5?p\xed\x1e\xc0L\xb2\xbd\xbf\xaf\xf1\xb3\xbfH\xa9d\xbf\xee\xed\xa6\xbf\xf2\x13\xd7\xbf\xce\xe2\xcd?$M.?\xba\xf1\x06\xc0\xeb\x9a\x16\xc0|\x9ft?5\xbf\xb4>*\xf7\xe0\xbfV\x1c\x93?C\x03\x92\xbe\xbb?i\xc0\xf0n\t?\xd1\x06\xce>\xa8\x8f\xa6?\xa2wA?\xaaM\x8b>\xe1\xafK\xbf\xd4c\xa3\xc0\\\xfda@\xa4\xf0\n\xbf\xb8\xe2\xa1@\xb8\xecV\xc0e\xb9s@\xa6\x14\x8a@\xddS\x8b\xc0\xf6\x86\xaf\xbf\xe0\xff\x01\xc0t\xb2&\xbf\x1f\xbc(\xc0\x08\xb7\x80?l\xc3\x8a\xc0'`
+  - start dict - has one key, `"start"`, which maps to corresponding entry ID which is unix timestamp. Ex: `b'1677021306179-0'`
+  - **????** logits dict - has one key, `"logits"`, which maps to 164-byte sequence. Assuming float32 dtype, this suggests a vocabulary of 41 words? Unsure how to make sense of this.
   - decoded sentence dict - has one key, either `"partial_decoded_sentence"` or `"final_decoded_sentence"`, mapping to text decoded so far. Ex: `b' my family is very need'`
-- `"binnedFeatures_20ms"` - List of length 22902. Binned neural features (threshold crossings and spike power, 20 ms bins). These aren’t z-scored yet. Again, entry IDs may be timestamps, like for `"binned:decoderOutput:stream"`. Keys:
-  - **????** `"threshold_crossings_bin"` - sequence of 512 bytes. Possibly 2 bytes per channel. If so, numbers seem to suggest little-endian ordering, simply storing int of threshold crossings in this bin
-  - **????** `"spike_band_power_bin"` - sequence of 1024 bytes, so likely 4 bytes per channel. Unsure of format, float 32 maybe?
+- `"binnedFeatures_20ms"` - List of length 22902. Binned neural features (threshold crossings and spike power, 20 ms bins). These aren’t z-scored yet. Keys:
+  - **????** `"threshold_crossings_bin"` - sequence of 512 bytes. Possibly 2 bytes per channel, (u)int16?
+  - **????** `"spike_band_power_bin"` - sequence of 1024 bytes, so likely 4 bytes per channel. Unsure of format, float 32 maybe? 
   - **????** `"input_id"` - 160-byte sequence. ??
   - **????** `"tracking_id"` - 8-byte sequence. ??
   - **????** `"BRAND_time"` - 8 bytes, unknown format. Ex: `b'\x1b\x06\x0e-w\x0b\x00\x00'`
+- `"metadata"` - List of length 1. Dict contains basic info: participant, session_name, session_description, block_num, block_description, startTime
+- `"mfcc"` - List of length 91614 (so ~200 Hz?). MFCC features computed from audio. Keys:
+  - **????** `"data"` - 52-byte sequence, likely 13 float32s.
+  - **????** `"ts"` - string timestamp, presumably in seconds. Ex: `b'12601.819151985'`. Frequency seems to be irregular?
+  - `"i"` - index, corresponds to position of ths dict in the list.
+- `"microphone"` - List of length 91666 (so ~200 Hz?). Raw microphone data. Keys:
+  - `"data"` - 440-byte sequence. Unknown dtype
+  - `"ts"` - string timestamp, presumably in seconds. Ex: `b'12601.819151985'`. Assuming these are in seconds, frequency seems to be around 200 Hz. This would suggest 220 values in `"data"` as the audio is 44 kHz. So, dtype is float16 maybe?
+  - `"i"` - index, corresponds to position of ths dict in the list.
+- `"task_state"` - List of length 120. The current state of the task (0/1/3 for delay/go cue/trial end). 3 entries per trial. Keys:
+  - `"trialNum"` - current trial number
+  - `"taskState"` - string of int, either 0/1/3 as described above
+  - `"timeStamp"` - timestamp in same format is `"trial_info"`, so unknown format. Ex: `b'\x1e\xc6s!T\xfd\xd8A'`
+- `"graph_status"` - List of length 9. Status of graph (e.g. initialized, running, etc.). Doesn't seem particularly useful
+- `"threshold_values1"` - List of length 458055 (so ~1 kHz?). Spikes simulated at 30 kHz from model-generated firing rates. Keys:
+  - **????** `"ts_start"` - string timestamp. Ex: `b'12601.696126469'`
+  - **????** `"ts_in"` - string timestamp, same format as above. Not sure what it means. 
+  - **????** `"ts"` - another string timestamp, same format as above.
+  - **????** `"ts_end"` - another string timestamp.
+  - `"i"` - string of int, index in list.
+  - **????** `"i_in"` - string of int, appears to be equal to `i // 5`
+  - **????** `"continuous"` - sequence of 15360 bytes. Guess? 256 channels, (u)int16 dtype, 30 samples per channel, as these are output at 1 kHz but spikes are simulated at 30 kHz. Unsure of proper array reshaping, though.
+  - **????** `"thresholds"` - sequence of 256 bytes. uint8s for each channel, threshold crossings in the last 1 ms?
+- `"firing_rates"` - List of length 91611 (so ~200 Hz?). Firing rates simulated from microphone data. Keys:
+  - **????** `"rates"` - 1024-byte sequence. Probably 256 channels of float32.
+  - `"ts"` - string timestamp, presumably in seconds.
+  - `"i"` - index, corresponds to position of ths dict in the list.
+- `"cb_gen_1"` - List of length 458055 (so ~1 kHz?). UDP packets of raw neural data simulated from spikes. Keys:
+  - **????** `"timestamps"` - 16 bytes. Not sure how to read, but from a quick search on UDP it seems that the data is streamed separately? So no actual neural data stored in RDB?
+- `"neuralFeatures_1ms"` - List of length 458055 (so ~1 kHz?). 1 ms binned neural features (like `"binnedFeatures_20ms"`). Keys:
+  - `"threshold_crossings"` - sequence of 512 bytes. Possibly 2 bytes per channel, (u)int16?
+  - `"spike_band_power"` - sequence of 1024 bytes, so likely 4 bytes per channel. Unsure of format, float32 maybe? 
+  - **????** `"nsp_timestamps"` - 240-byte sequence. ??
+  - `"tracking_id"` - 8-byte sequence. ??
+  - `"BRAND_time"` - 8 bytes, unknown format. ??
+- `"buttonAdapter_output"` - List of length 86. Information about when the button is pressed (for ending each trial). Keys:
+  - `"direction"` - `{"down", "up"}` for button press and release (respectively)
+  - `"event_timestamp"` - string of float of event time, Unix timestamp (submillisecond)
+  - `"time_display"` - clock time (string, `%H:%M:%S`)
+  - `"write_timestamp"` - raw bytes float64 of `"event_timestamp"`
+- `"continuousNeural"` - List of length 458055 (so ~1 kHz?). 30 kHz simulated neural data through virtual recording interface. Keys:
+  - **????** `"timestamps"` - 240-byte sequence. ??
+  - **????** `"BRANDS_time"` - 240-byte sequence. ??
+  - **????** `"udp_recv_time"` - 240-byte sequence. ??
+  - `"tracking_id"` - 8 bytes, unknown format. ??
+  - `"write_timestamp"` - float64 Unix timestamp
+  - **????** `"samples"` - 15360-byte sequence. 30 kHz data, so likely 256 channels, 30 samples per channel, (u)int16 or float16?
+
+## Data to extract
+
+Definitely:
+- trial information
+- `"neuralFeatures_1ms"` (threshold crossing times, spike band power?)
+- `"binned:decoderOutput:stream"`
+
+Unsure:
+- `"microphone"`, `"mfcc"`. Microphone input and feature extraction are used to generate simulated neural data. So, they probably won't be present in actual experimental data. However, they might still be useful to BG2 team now. Should ask.
+- `"threshold_values1"`, `"firing_rates"`. Simulated neural activity parameters. Again, won't be present in actual experiments, but could be useful. Ask.
+- `"cb_gen_1"`. Doesn't seem to contain any actual data and only records of when/where data was sent through UDP. Probably not useful, but ask just in case.
+- `"continuousNeural"`. Data seems sparse? mostly 0? is there something wrong with the data or how they're being read? Ask.
+- `"binnedFeatures_20ms"`. Redundant if we have `"neuralFeatures_1ms"` IMO. However, I guess if they are worried about errors in the binning process, they might want to have the binned output too. Ask.
+- `"buttonAdapter_output"`. Seems pretty useless, used to control trial timings, etc. but those are stored. Again, I guess if they want to be able to see potential errors in that pathway, they need these data. Ask.
