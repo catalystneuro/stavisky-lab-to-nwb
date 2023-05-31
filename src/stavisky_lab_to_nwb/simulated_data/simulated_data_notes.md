@@ -83,8 +83,8 @@ Here is an overview of each data stream in the RDB file: *(bold question marks m
 - `"binnedFeatures_20ms"` - List of length 22902. Binned neural features (threshold crossings and spike power, 20 ms bins). These aren’t z-scored yet. Keys:
   - **????** `"threshold_crossings_bin"` - sequence of 512 bytes. Possibly 2 bytes per channel, (u)int16?
   - **????** `"spike_band_power_bin"` - sequence of 1024 bytes, so likely 4 bytes per channel. Unsure of format, float 32 maybe? 
-  - **????** `"input_id"` - 160-byte sequence. ??
-  - **????** `"tracking_id"` - 8-byte sequence. ??
+  - **????** `"input_id"` - 160-byte sequence. Appears to be int64, list of 20 indices probably corresponding to `"neuralFeatures_1ms"` included.
+  - **????** `"tracking_id"` - 8-byte sequence. Appears to be int64, \[19, 39, ...\]. Corresponds to `"neuralFeatures_1ms"` probably
   - **????** `"BRAND_time"` - 8 bytes, unknown format. Ex: `b'\x1b\x06\x0e-w\x0b\x00\x00'`
 - `"metadata"` - List of length 1. Dict contains basic info: participant, session_name, session_description, block_num, block_description, startTime
 - `"mfcc"` - List of length 91614 (so ~200 Hz?). MFCC features computed from audio. Keys:
@@ -118,8 +118,8 @@ Here is an overview of each data stream in the RDB file: *(bold question marks m
 - `"neuralFeatures_1ms"` - List of length 458055 (so ~1 kHz?). 1 ms binned neural features (like `"binnedFeatures_20ms"`). Keys:
   - `"threshold_crossings"` - sequence of 512 bytes. Possibly 2 bytes per channel, (u)int16?
   - `"spike_band_power"` - sequence of 1024 bytes, so likely 4 bytes per channel. Unsure of format, float32 maybe? 
-  - **????** `"nsp_timestamps"` - 240-byte sequence. ??
-  - `"tracking_id"` - 8-byte sequence. ??
+  - **????** `"nsp_timestamps"` - 240-byte sequence. Appears to be int64, simply indices (at 30 kHz) starting from 1.
+  - `"tracking_id"` - 8-byte sequence. Appears to be int64, indices starting from 1 (at 1 kHz)
   - `"BRAND_time"` - 8 bytes, unknown format. ??
 - `"buttonAdapter_output"` - List of length 86. Information about when the button is pressed (for ending each trial). Keys:
   - `"direction"` - `{"down", "up"}` for button press and release (respectively)
@@ -127,21 +127,21 @@ Here is an overview of each data stream in the RDB file: *(bold question marks m
   - `"time_display"` - clock time (string, `%H:%M:%S`)
   - `"write_timestamp"` - raw bytes float64 of `"event_timestamp"`
 - `"continuousNeural"` - List of length 458055 (so ~1 kHz?). 30 kHz simulated neural data through virtual recording interface. Keys:
-  - **????** `"timestamps"` - 240-byte sequence. ??
+  - **????** `"timestamps"` - 240-byte sequence. Appears to be int64, indices (at 30 kHz) starting from 1.
   - **????** `"BRANDS_time"` - 240-byte sequence. ??
-  - **????** `"udp_recv_time"` - 240-byte sequence. ??
-  - `"tracking_id"` - 8 bytes, unknown format. ??
+  - **????** `"udp_recv_time"` - 240-byte sequence. Appears to be float64, (30,) array of Unix timestamps
+  - `"tracking_id"` - 8 bytes, unknown format. Appears to be int64, index starting from 1 (at 1 kHz)
   - `"write_timestamp"` - float64 Unix timestamp
-  - **????** `"samples"` - 15360-byte sequence. 30 kHz data, so likely 256 channels, 30 samples per channel, (u)int16 or float16?
+  - **????** `"samples"` - 15360-byte sequence. 30 kHz data, so likely 256 channels, 30 samples per channel. Appears to be int16, inverted waveform, 0.1 mV scale? `.reshape(30, 256)` looks better.
 
 ## Data to extract
 
 Definitely:
 - trial information
 - `"neuralFeatures_1ms"` (threshold crossing times, spike band power?)
-- `"binned:decoderOutput:stream"`
 
 Unsure:
+- `"binned:decoderOutput:stream"`
 - `"microphone"`, `"mfcc"`. Microphone input and feature extraction are used to generate simulated neural data. So, they probably won't be present in actual experimental data. However, they might still be useful to BG2 team now. Should ask.
 - `"threshold_values1"`, `"firing_rates"`. Simulated neural activity parameters. Again, won't be present in actual experiments, but could be useful. Ask.
 - `"cb_gen_1"`. Doesn't seem to contain any actual data and only records of when/where data was sent through UDP. Probably not useful, but ask just in case.
