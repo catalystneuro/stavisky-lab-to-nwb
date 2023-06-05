@@ -6,15 +6,27 @@ from neuroconv.datainterfaces import (
     PhySortingInterface,
 )
 
-from stavisky_lab_to_nwb.simulated_data import SimulatedDataBehaviorInterface
-
+from stavisky_lab_to_nwb.simulated_data import (
+    # SimulatedDataBehaviorInterface,
+    # SimulatedDataSortingInterface,
+    SimulatedDataRecordingInterface,
+    SimulatedDataTrialsInterface,
+)
 
 class SimulatedDataNWBConverter(NWBConverter):
     """Primary conversion class for my extracellular electrophysiology dataset."""
 
     data_interface_classes = dict(
-        Recording=SpikeGLXRecordingInterface,
-        LFP=SpikeGLXLFPInterface,
-        Sorting=PhySortingInterface,
-        Behavior=SimulatedDataBehaviorInterface,
+        Recording=SimulatedDataRecordingInterface,
+        # Sorting=SimulatedDataSortingInterface,
+        # Behavior=SimulatedDataBehaviorInterface,
+        Trials=SimulatedDataTrialsInterface,
     )
+    
+    def __init__(
+        self,
+        source_data: dict,
+        verbose: bool = True,
+    ):
+        super().__init__(source_data=source_data, verbose=verbose)
+

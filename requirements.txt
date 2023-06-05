@@ -1,3 +1,5 @@
 neuroconv
 nwbwidgets
 nwbinspector
+redis
+numpy

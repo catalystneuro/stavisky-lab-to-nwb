@@ -3,51 +3,65 @@ from pathlib import Path
 from typing import Union
 import datetime
 from zoneinfo import ZoneInfo
+import redis
+import numpy as np
 
 from neuroconv.utils import load_dict_from_file, dict_deep_update
 
 from stavisky_lab_to_nwb.simulated_data import SimulatedDataNWBConverter
 
 
-def session_to_nwb(data_dir_path: Union[str, Path], output_dir_path: Union[str, Path], stub_test: bool = False):
+def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub_test: bool = False):
 
-    data_dir_path = Path(data_dir_path)
+    r = redis.Redis(port=port, host=host)
+    r.ping()
+
     output_dir_path = Path(output_dir_path)
     if stub_test:
         output_dir_path = output_dir_path / "nwb_stub"
     output_dir_path.mkdir(parents=True, exist_ok=True)
     
-    session_id = "subject_identifier_usually"
+    session_id = "0_230221T1514_end_to_end_closed_loop_mm"
     nwbfile_path = output_dir_path / f"{session_id}.nwb"
 
     source_data = dict()
     conversion_options = dict()
 
     # Add Recording
-    source_data.update(dict(Recording=dict()))
+    source_data.update(dict(Recording=dict(port=port, host=host)))
     conversion_options.update(dict(Recording=dict()))
     
     # Add LFP
-    source_data.update(dict(LFP=dict()))
-    conversion_options.update(dict(LFP=dict()))
+    # source_data.update(dict(LFP=dict()))
+    # conversion_options.update(dict(LFP=dict()))
 
     # Add Sorting
-    source_data.update(dict(Sorting=dict()))
-    conversion_options.update(dict(Sorting=dict()))
+    # source_data.update(dict(Sorting=dict()))
+    # conversion_options.update(dict(Sorting=dict()))
 
     # Add Behavior
-    source_data.update(dict(Behavior=dict()))
-    conversion_options.update(dict(Behavior=dict()))
+    # source_data.update(dict(Behavior=dict()))
+    # conversion_options.update(dict(Behavior=dict()))
+    
+    # Add Trials
+    source_data.update(dict(Trials=dict(port=port, host=host)))
+    conversion_options.update(dict(Trials=dict()))
 
     converter = SimulatedDataNWBConverter(source_data=source_data)
     
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    datetime.datetime(
-        year=2020, month=1, day=1, tzinfo=ZoneInfo("US/Eastern")
-    )
-    date = datetime.datetime.today()  # TO-DO: Get this from author
+    rdb_metadata = r.xrange('metadata')[0][1]
+    # datetime.datetime(
+    #     year=2020, month=1, day=1, tzinfo=ZoneInfo("US/Eastern")
+    # )
+    date = datetime.datetime.fromtimestamp(np.frombuffer(
+            rdb_metadata[b'startTime'],
+            dtype=np.float64).item()).replace(tzinfo=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
+    
+    subject = str(rdb_metadata[b'participant'])
+    metadata["Subject"]["subject_id"] = subject
     
     # Update default metadata with the editable in the corresponding yaml file
     editable_metadata_path = Path(__file__).parent / "simulated_data_metadata.yaml"
@@ -56,16 +70,21 @@ def session_to_nwb(data_dir_path: Union[str, Path], output_dir_path: Union[str, 
 
     # Run conversion
     converter.run_conversion(metadata=metadata, nwbfile_path=nwbfile_path, conversion_options=conversion_options)
+    
+    # Close redis
+    r.close()
 
 
 if __name__ == "__main__":
     
     # Parameters for conversion
-    data_dir_path = Path("/Directory/With/Raw/Formats/")
-    output_dir_path = Path("~/conversion_nwb/")
+    port = 6379
+    host = "localhost"
+    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/simulated_data/").expanduser()
     stub_test = False
 
-    session_to_nwb(data_dir_path=data_dir_path, 
+    session_to_nwb(port=port, 
+                    host=host,
                     output_dir_path=output_dir_path, 
                     stub_test=stub_test,
                     )

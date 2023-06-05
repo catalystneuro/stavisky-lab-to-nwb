@@ -1,23 +1,22 @@
 import redis
 import numpy as np
 from pathlib import Path
+from typing import Optional
 
-from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.utils.json_schema import FolderPathType
 from pynwb.file import NWBFile
 
+from neuroconv.basedatainterface import BaseDataInterface
 
-class SimulatedDataTrialInterface(BaseDataInterface):
-    """Trial interface for simulated_data conversion"""
+
+class SimulatedDataTrialsInterface(BaseDataInterface):
+    """Trials interface for simulated_data conversion"""
     
     def __init__(
         self, 
-        client: redis.Redis,
+        port: int,
+        host: str,
     ):
-        # Potentially provide only port number, localhost name
-        # and instantiate a new client per DataInterface or
-        # per .run_conversion() call?
-        super().__init__(client=client)
+        super().__init__(port=port, host=host)
 
     def get_metadata(self):
         # Automatically retrieve as much metadata as possible
@@ -28,10 +27,15 @@ class SimulatedDataTrialInterface(BaseDataInterface):
     def run_conversion(
         self,
         nwbfile: NWBFile,
+        metadata: Optional[dict] = None,
         stub_test: bool = False,
     ):
         # All the custom code to write to PyNWB
-        r = self.source_data["client"]
+        r = redis.Redis(
+            port=self.source_data["port"],
+            host=self.source_data["host"],
+        )
+        r.ping()
         
         session_start_time = np.frombuffer(
             r.xrange('metadata')[0][1][b'startTime'],
@@ -59,16 +63,17 @@ class SimulatedDataTrialInterface(BaseDataInterface):
             }
         
         event_names = { # TODO - reconsider names
-            b'0': "delay_time",
+            # b'0': "delay_time", # pretty much redundant with "start_time" (~0.03 ms later) 
             b'1': "go_cue_time",
-            b'3': "task_end_time", # TODO - check whether to include? potentially same as "stop_time"
+            # b'3': "task_end_time", # pretty much redundant with "stop_time" (~0.4-0.5 ms earlier)
         }
         for event in task_state:
             trial_id = int(event[b'trialNum'])
-            name = event_names.get(event[b'taskState'])
-            timestamp = np.frombuffer(event[b'timeStamp'], dtype=np.float64).item()
-            event_time = timestamp - session_start_time
-            trial_dict[trial_id][name] = event_time
+            name = event_names.get(event[b'taskState'], None)
+            if name:
+                timestamp = np.frombuffer(event[b'timeStamp'], dtype=np.float64).item()
+                event_time = timestamp - session_start_time
+                trial_dict[trial_id][name] = event_time
         
         trial_id_list = sorted(trial_dict.keys())
         trial_list = [trial_dict[i] for i in trial_id_list]
@@ -96,3 +101,5 @@ class SimulatedDataTrialInterface(BaseDataInterface):
         
         for trial in trial_list:
             nwbfile.add_trial(**trial)
+        
+        r.close()
