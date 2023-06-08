@@ -55,11 +55,13 @@ class SimulatedDataTrialsInterface(BaseDataInterface):
             trial_end_time = trial_end_ts - session_start_time
             delay = float(trial[b'delay'])
             intertrial_interval = float(trial[b'interTrialSleep'])
+            sentence_cue = str(trial[b'sentenceCue'])
             trial_dict[trial_id] = {
                 "start_time": trial_start_time,
                 "stop_time": trial_end_time,
                 "delay": delay,
-                "intertrial_interval": intertrial_interval
+                "intertrial_interval": intertrial_interval,
+                "sentence_cue": sentence_cue,
             }
         
         event_names = { # TODO - reconsider names
@@ -82,9 +84,13 @@ class SimulatedDataTrialsInterface(BaseDataInterface):
             name="delay", 
             description="Length of delay period before go cue, in ms"
         )
-        nwbfile.add_trial_column( # TODO - not sure if description accurate
+        nwbfile.add_trial_column(
             name="intertrial_interval", 
-            description="Length of interval between end of current trial and start of next trial"
+            description="Length of interval between end of current trial and start of next trial, in ms"
+        )
+        nwbfile.add_trial_column(
+            name="sentence_cue",
+            description="The sentence cue that is given to the subject"
         )
         # nwbfile.add_trial_column(
         #     name="delay_time", 

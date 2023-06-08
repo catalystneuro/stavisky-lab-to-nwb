@@ -12,7 +12,7 @@ class SimulatedDataPhonemeLogitsInterface(BaseDataInterface):
     def __init__(
         self, 
         port: int,
-        host: str
+        host: str,
     ):
         # This should load the data lazily and prepare variables you need
         super().__init__(port=port, host=host)
