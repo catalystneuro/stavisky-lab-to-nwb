@@ -15,13 +15,14 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
     r = redis.Redis(port=port, host=host)
     r.ping()
+    rdb_metadata = r.xrange('metadata')[0][1]
 
     output_dir_path = Path(output_dir_path)
     if stub_test:
         output_dir_path = output_dir_path / "nwb_stub"
     output_dir_path.mkdir(parents=True, exist_ok=True)
     
-    session_id = "0_230221T1514_end_to_end_closed_loop_mm"
+    session_id = str(rdb_metadata[b'session_name'])
     nwbfile_path = output_dir_path / f"{session_id}.nwb"
 
     source_data = dict()
@@ -51,17 +52,23 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    rdb_metadata = r.xrange('metadata')[0][1]
-    # datetime.datetime(
-    #     year=2020, month=1, day=1, tzinfo=ZoneInfo("US/Eastern")
-    # )
     date = datetime.datetime.fromtimestamp(np.frombuffer(
             rdb_metadata[b'startTime'],
             dtype=np.float64).item()).replace(tzinfo=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
     
+    # Add subject ID
     subject = str(rdb_metadata[b'participant'])
     metadata["Subject"]["subject_id"] = subject
+    
+    # Add session info
+    metadata["NWBFile"]["session_id"] = session_id
+    session_description = f"{str(rdb_metadata[b'session_description']).strip('. \n')}. " + \
+        f"Block {str(rdb_metadata[b'block_num']).strip()}: {str(rdb_metadata[b'block_description']).strip()}"
+    metadata["NWBFile"]["session_description"] = session_description
+    
+    # Close redis instance
+    r.close()
     
     # Update default metadata with the editable in the corresponding yaml file
     editable_metadata_path = Path(__file__).parent / "simulated_data_metadata.yaml"
@@ -71,9 +78,6 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     # Run conversion
     converter.run_conversion(metadata=metadata, nwbfile_path=nwbfile_path, conversion_options=conversion_options)
     
-    # Close redis
-    r.close()
-
 
 if __name__ == "__main__":
     

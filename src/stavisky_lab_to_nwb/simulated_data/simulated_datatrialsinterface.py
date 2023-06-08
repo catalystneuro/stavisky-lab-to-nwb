@@ -86,18 +86,18 @@ class SimulatedDataTrialsInterface(BaseDataInterface):
             name="intertrial_interval", 
             description="Length of interval between end of current trial and start of next trial"
         )
-        nwbfile.add_trial_column(
-            name="delay_time", 
-            description="Time at which delay period begins"
-        )
+        # nwbfile.add_trial_column(
+        #     name="delay_time", 
+        #     description="Time at which delay period begins"
+        # )
         nwbfile.add_trial_column( # TODO - not sure if description accurate
             name="go_cue_time", 
             description="Time of presentation of go cue, which signals beginning of task"
         )
-        nwbfile.add_trial_column( # TODO - not sure if description accurate
-            name="task_end_time", 
-            description="Time of the end of the task, when imagined speech and decoding stop"
-        )
+        # nwbfile.add_trial_column( # TODO - not sure if description accurate
+        #     name="task_end_time", 
+        #     description="Time of the end of the task, when imagined speech and decoding stop"
+        # )
         
         for trial in trial_list:
             nwbfile.add_trial(**trial)
