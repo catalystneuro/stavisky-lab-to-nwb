@@ -1,4 +1,2 @@
-neuroconv
-nwbwidgets
-nwbinspector
-redis
+neuroconv==0.3.0
+redis=4.5.1

@@ -44,8 +44,8 @@ class StaviskyTrialsInterface(BaseDataInterface):
             dtype=np.float64).item()
         
         # Extract trial information
-        trial_info = r.xrange("trial_info", max=(10 if stub_test else '+'))
-        task_state = r.xrange("task_state", max=(10 if stub_test else '+'))
+        trial_info = r.xrange("trial_info", count=(10 if stub_test else None))
+        task_state = r.xrange("task_state", count=(10 if stub_test else None))
         
         # Parse and store "trial_info" by trial ID
         trial_dict = {}
