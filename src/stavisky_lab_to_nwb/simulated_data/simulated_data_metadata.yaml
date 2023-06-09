@@ -1,11 +1,11 @@
 NWBFile:
-#   related_publications:
+#   related_publications: # No publications yet
 #     - https://doi.org/###
-#   session_description:
+#   session_description: # Currently extracted from Redis
 #     A rich text description of the experiment. Can also just be the abstract of the publication.
   institution: University of California, Davis
   lab: Stavisky
-  experimenter:
+  experimenter: # TODO: add all experimenters
     - Card, Nicholas
 Subject: # TODO: replace dummy values
   species: Homo sapiens

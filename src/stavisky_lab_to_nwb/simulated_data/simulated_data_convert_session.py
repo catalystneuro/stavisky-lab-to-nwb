@@ -8,47 +8,44 @@ import numpy as np
 
 from neuroconv.utils import load_dict_from_file, dict_deep_update
 
-from stavisky_lab_to_nwb.simulated_data import SimulatedDataNWBConverter
+from stavisky_lab_to_nwb.simulated_data import StaviskyNWBConverter
 
 
 def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub_test: bool = False):
 
+    # Instantiate Redis client and check connection
     r = redis.Redis(port=port, host=host)
     r.ping()
+    
+    # Extract session metadata
     rdb_metadata = r.xrange('metadata')[0][1]
 
+    # Prepare output path
     output_dir_path = Path(output_dir_path)
     if stub_test:
         output_dir_path = output_dir_path / "nwb_stub"
     output_dir_path.mkdir(parents=True, exist_ok=True)
     
-    session_id = str(rdb_metadata[b'session_name'])
+    session_id = rdb_metadata[b'session_name'].decode('UTF-8')
     nwbfile_path = output_dir_path / f"{session_id}.nwb"
 
+    # Configure conversion
     source_data = dict()
     conversion_options = dict()
 
     # Add Recording
-    source_data.update(dict(Recording=dict(port=port, host=host)))
-    conversion_options.update(dict(Recording=dict()))
-    
-    # Add LFP
-    # source_data.update(dict(LFP=dict()))
-    # conversion_options.update(dict(LFP=dict()))
+    # source_data.update(dict(Recording=dict(port=port, host=host)))
+    # conversion_options.update(dict(Recording=dict()))
 
     # Add Sorting
     # source_data.update(dict(Sorting=dict()))
     # conversion_options.update(dict(Sorting=dict()))
-
-    # Add Behavior
-    # source_data.update(dict(Behavior=dict()))
-    # conversion_options.update(dict(Behavior=dict()))
     
     # Add Trials
     source_data.update(dict(Trials=dict(port=port, host=host)))
-    conversion_options.update(dict(Trials=dict()))
+    conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
 
-    converter = SimulatedDataNWBConverter(source_data=source_data)
+    converter = StaviskyNWBConverter(source_data=source_data)
     
     # Add datetime to conversion
     metadata = converter.get_metadata()
@@ -58,16 +55,17 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     metadata["NWBFile"]["session_start_time"] = date
     
     # Add subject ID
-    subject = str(rdb_metadata[b'participant'])
+    subject = rdb_metadata[b'participant'].decode('UTF-8')
     metadata["Subject"]["subject_id"] = subject
     
     # Add session info
     metadata["NWBFile"]["session_id"] = session_id
-    session_description = f"{str(rdb_metadata[b'session_description']).strip('. \n')}. " + \
-        f"Block {str(rdb_metadata[b'block_num']).strip()}: {str(rdb_metadata[b'block_description']).strip()}"
+    session_description = f"{rdb_metadata[b'session_description'].decode('UTF-8').strip()}. " + \
+        f"Block {rdb_metadata[b'block_num'].decode('UTF-8').strip()}: " + \
+        f"{rdb_metadata[b'block_description'].decode('UTF-8').strip()}"
     metadata["NWBFile"]["session_description"] = session_description
     
-    # Close redis instance
+    # Close Redis client
     r.close()
     
     # Update default metadata with the editable in the corresponding yaml file

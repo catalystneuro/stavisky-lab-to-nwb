@@ -1,26 +1,22 @@
 """Primary NWBConverter class for this dataset."""
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import (
-    SpikeGLXRecordingInterface,
-    SpikeGLXLFPInterface,
-    PhySortingInterface,
-)
 
 from stavisky_lab_to_nwb.simulated_data import (
-    # SimulatedDataBehaviorInterface,
-    # SimulatedDataSortingInterface,
-    SimulatedDataRecordingInterface,
-    SimulatedDataTrialsInterface,
+    # StaviskyPhonemeLogitsInterface, 
+    # StaviskyDecodedTextInterface,
+    # StaviskySpikingBandPowerInterface,
+    # RedisSortingInterface,
+    # RedisRecordingInterface,
+    StaviskyTrialsInterface,
 )
 
-class SimulatedDataNWBConverter(NWBConverter):
+class StaviskyNWBConverter(NWBConverter):
     """Primary conversion class for my extracellular electrophysiology dataset."""
 
     data_interface_classes = dict(
-        Recording=SimulatedDataRecordingInterface,
-        # Sorting=SimulatedDataSortingInterface,
-        # Behavior=SimulatedDataBehaviorInterface,
-        Trials=SimulatedDataTrialsInterface,
+        # Recording=RedisRecordingInterface,
+        # Sorting=RedisSortingInterface,
+        Trials=StaviskyTrialsInterface,
     )
     
     def __init__(

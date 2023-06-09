@@ -1,3 +1,4 @@
+"""Primary class for converting trial data."""
 import redis
 import numpy as np
 from pathlib import Path
@@ -8,7 +9,7 @@ from pynwb.file import NWBFile
 from neuroconv.basedatainterface import BaseDataInterface
 
 
-class SimulatedDataTrialsInterface(BaseDataInterface):
+class StaviskyTrialsInterface(BaseDataInterface):
     """Trials interface for simulated_data conversion"""
     
     def __init__(
@@ -30,24 +31,25 @@ class SimulatedDataTrialsInterface(BaseDataInterface):
         metadata: Optional[dict] = None,
         stub_test: bool = False,
     ):
-        # All the custom code to write to PyNWB
+        # Instantiate Redis client and check connection
         r = redis.Redis(
             port=self.source_data["port"],
             host=self.source_data["host"],
         )
         r.ping()
         
+        # Get session start time to reference
         session_start_time = np.frombuffer(
             r.xrange('metadata')[0][1][b'startTime'],
             dtype=np.float64).item()
         
-        # TODO - implement stub test
-        # ignore Redis timestamps
-        trial_info = tuple(zip(*r.xrange("trial_info")))[1]
-        task_state = tuple(zip(*r.xrange("task_state")))[1]
+        # Extract trial information
+        trial_info = r.xrange("trial_info", max=(10 if stub_test else '+'))
+        task_state = r.xrange("task_state", max=(10 if stub_test else '+'))
         
+        # Parse and store "trial_info" by trial ID
         trial_dict = {}
-        for trial in trial_info:
+        for timestamp, trial in trial_info:
             trial_id = int(trial[b'trialNum'])
             trial_start_ts = np.frombuffer(trial[b'trialStart'], dtype=np.float64).item()
             trial_start_time = trial_start_ts - session_start_time
@@ -55,7 +57,7 @@ class SimulatedDataTrialsInterface(BaseDataInterface):
             trial_end_time = trial_end_ts - session_start_time
             delay = float(trial[b'delay'])
             intertrial_interval = float(trial[b'interTrialSleep'])
-            sentence_cue = str(trial[b'sentenceCue'])
+            sentence_cue = trial[b'sentenceCue'].decode('UTF-8')
             trial_dict[trial_id] = {
                 "start_time": trial_start_time,
                 "stop_time": trial_end_time,
@@ -64,12 +66,13 @@ class SimulatedDataTrialsInterface(BaseDataInterface):
                 "sentence_cue": sentence_cue,
             }
         
-        event_names = { # TODO - reconsider names
+        # Add event timing info by trial ID
+        event_names = { 
             # b'0': "delay_time", # pretty much redundant with "start_time" (~0.03 ms later) 
             b'1': "go_cue_time",
             # b'3': "task_end_time", # pretty much redundant with "stop_time" (~0.4-0.5 ms earlier)
         }
-        for event in task_state:
+        for timestamp, event in task_state:
             trial_id = int(event[b'trialNum'])
             name = event_names.get(event[b'taskState'], None)
             if name:
@@ -77,9 +80,7 @@ class SimulatedDataTrialsInterface(BaseDataInterface):
                 event_time = timestamp - session_start_time
                 trial_dict[trial_id][name] = event_time
         
-        trial_id_list = sorted(trial_dict.keys())
-        trial_list = [trial_dict[i] for i in trial_id_list]
-        
+        # Set up trials table columns
         nwbfile.add_trial_column(
             name="delay", 
             description="Length of delay period before go cue, in ms"
@@ -90,22 +91,24 @@ class SimulatedDataTrialsInterface(BaseDataInterface):
         )
         nwbfile.add_trial_column(
             name="sentence_cue",
-            description="The sentence cue that is given to the subject"
+            description="The sentence cue that the subject speaks/imagines speaking"
         )
         # nwbfile.add_trial_column(
         #     name="delay_time", 
         #     description="Time at which delay period begins"
         # )
-        nwbfile.add_trial_column( # TODO - not sure if description accurate
+        nwbfile.add_trial_column(
             name="go_cue_time", 
             description="Time of presentation of go cue, which signals beginning of task"
         )
-        # nwbfile.add_trial_column( # TODO - not sure if description accurate
+        # nwbfile.add_trial_column(
         #     name="task_end_time", 
-        #     description="Time of the end of the task, when imagined speech and decoding stop"
+        #     description="Time of the end of the task, when speech and decoding stop"
         # )
         
-        for trial in trial_list:
-            nwbfile.add_trial(**trial)
+        # Add trials in order of trial ID
+        for trial_id in sorted(trial_dict.keys()):
+            nwbfile.add_trial(**trial_dict[trial_id])
         
+        # Close Redis client
         r.close()
