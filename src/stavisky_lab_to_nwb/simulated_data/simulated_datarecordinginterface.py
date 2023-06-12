@@ -1,8 +1,8 @@
 """Primary class for converting ecephys recording."""
 from pynwb.file import NWBFile
-from typing import Union, Optional, List, Tuple, Sequence
+from typing import Union, Optional, List, Tuple, Sequence, Literal
 
-from neuroconv.basedatainterface import BaseDataInterface
+from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 from spikeinterface.extractors import BaseRecording, BaseRecordingSegment
 
@@ -15,18 +15,36 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         data_key: Union[bytes, str],
         channel_count: int,
         dtype: Union[str, type, np.dtype],
-        segment_start: int,
-        segment_end: int,
-        channel_ids: Optional[Sequence] = None,
+        timestamps: np.ndarray,
+        entry_ids: list[bytes],
         frames_per_entry: int = 1,
         start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
-        timestamp_source: Union[bytes, str] = "redis",
-        timestamp_kwargs: dict = {},
+        channel_dim: int = 0,
     ):
         # Assign Redis client and check connection
         self._client = client
         self._client.ping()
+        
+        # initialize base class
+        BaseRecordingSegment.__init__(self, time_vector=timestamps, t_start=start_time)
+        
+        # arg checks
+        assert channel_dim in [0, 1]
+        assert len(entry_ids) == self._client.xlen(stream_name)
+        
+        # save some variables
+        self._stream_name = stream_name
+        self._data_key = data_key
+        self._channel_count = channel_count
+        self._channel_dim = channel_dim
+        self._dtype = dtype
+        self._entry_ids = entry_ids
+        self._frames_per_entry = frames_per_entry
+        self._num_samples = frames_per_entry * len(entry_ids)
+
+    def get_num_samples(self) -> int:
+        return self._num_samples
         
     def get_traces(
         self,
@@ -34,9 +52,51 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         end_frame: Union[int, None] = None,
         channel_indices: Union[List, None] = None,
     ) -> np.ndarray:
-        pass
+        # handle None args
+        if start_frame is None:
+            start_frame = 0
+        if end_frame is None:
+            end_frame = self._num_samples - 1 # inclusive
         
-
+        # arg check (not allowing negative indices currently)
+        assert start_frame >= 0
+        assert end_frame < self._num_samples
+        
+        # convert to entry number and within-entry idx
+        start_entry_idx = start_frame // self._frames_per_entry
+        start_frame_idx = start_frame % self._frames_per_entry
+        end_entry_idx = end_frame // self._frames_per_entry
+        end_frame_idx = end_frame % self._frames_per_entry
+        
+        stream_entries = self._client.xrange(
+            self._stream_name,
+            min=self._entry_ids[start_entry_idx],
+            max=self._entry_ids[end_entry_idx],
+        )
+        
+        traces = []
+        for entry in stream_entries:
+            entry_data = np.frombuffer(entry[1][self._data_key], dtype=self._dtype)
+            assert entry_data.size() == (self._frames_per_entry * self._channel_dim)
+            if self._frames_per_entry > 1:
+                if self._channel_dim == 0:
+                    entry_data = entry_data.reshape((self._channel_dim, self._frames_per_entry)).T
+                elif self._channel_dim == 1:
+                    entry_data = entry_data.reshape((self._frames_per_entry, self._channel_dim))
+            traces.append(entry_data)
+        traces = np.concatenate(traces, axis=0)
+        
+        # slicing operations
+        # TODO: make more compact
+        if start_frame_idx > 0:
+            traces = traces[start_frame_idx:]
+        if end_frame_idx < self._frames_per_entry - 1:
+            traces = traces[:(end_frame_idx + 1 - self._frames_per_entry)]
+        if channel_indices is not None:
+            traces = traces[:, channel_indices]
+        
+        return traces
+        
 
 class RedisStreamRecordingExtractor(BaseRecording):
     def __init__(
@@ -54,6 +114,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
         timestamp_source: Union[bytes, str] = "redis",
         timestamp_kwargs: dict = {},
         gain_to_uv: Optional[float] = None,
+        channel_dim: int = 0,
     ):
         # Instantiate Redis client and check connection
         self._client = redis.Redis(
@@ -69,19 +130,18 @@ class RedisStreamRecordingExtractor(BaseRecording):
         # Infer sampling frequency from first and last entry
         stream_len = self._client.xlen(stream_name)
         assert stream_len > 0, "Stream has length 0"
-        if sampling_frequency is None:
-            stream_start = int(self._client.xrange(stream_name, count=1)[0][0].split(b'-'))
-            stream_end = int(self._client.xrevrange(stream_name, count=1)[0][0].split(b'-'))
-            stream_dur = (stream_end - stream_start) / 1000.
-            sampling_frequency = round((stream_len - 1) * frames_per_entry / stream_dur, 9)
-        
-        # Infer start time from sampling frequency and first entry
-        if start_time is None:
-            stream_start = stream_start = int(self._client.xrange(stream_name, count=1)[0][0].split(b'-'))
-            start_time = stream_start / 1000. - frames_per_entry * sampling_frequency
+        start_time, sampling_frequency, timestamps, entry_ids = self.calculate_timestamps(
+            stream_name=stream_name,
+            frames_per_entry=frames_per_entry,
+            timestamp_source=timestamp_source,
+            start_time=start_time,
+            sampling_frequency=sampling_frequency,
+            chunk_size=10,
+            **timestamp_kwargs
+        )
         
         # Initialize Recording and RecordingSegment
-        # NOTE: does not support multiple segments, assumes continuous recording for whole sream
+        # NOTE: does not support multiple segments, assumes continuous recording for whole stream
         BaseRecording.__init__(self, channel_ids=channel_ids, sampling_frequency=sampling_frequency, dtype=dtype)
         recording_segment = RedisStreamRecordingSegment(
             client=self._client,
@@ -93,8 +153,9 @@ class RedisStreamRecordingExtractor(BaseRecording):
             frames_per_entry=frames_per_entry,
             start_time=start_time,
             sampling_frequency=sampling_frequency,
-            timestamp_source=timestamp_source,
-            timestamp_kwargs=timestamp_kwargs,
+            timestamps=timestamps,
+            entry_ids=entry_ids,
+            channel_dim=channel_dim,
         )
         self.add_recording_segment(recording_segment)
         
@@ -114,22 +175,148 @@ class RedisStreamRecordingExtractor(BaseRecording):
             "timestamp_source": timestamp_source,
             # "timestamp_kwargs": timestamp_kwargs,
         }
+        
+    def calculate_timestamps(
+        self,
+        stream_name: str,
+        frames_per_entry: int,
+        timestamp_source: Union[bytes, str],
+        timestamp_encoding: Literal["str", "buffer"],
+        timestamp_dtype: Union[str, type, np.dtype],
+        start_time: Optional[float] = None,
+        sampling_frequency: Optional[float] = None,
+        chunk_size: int = 10,
+        smooth_timestamps: bool = True,
+    ):
+        # NOTE: if this is useful for other classes, maybe it can be in a mixin
+        
+        # initialize variables for loop
+        timestamps = []
+        entry_ids = []
+        last_ts = -np.inf
+        
+        # get first block of entries
+        num_entries = self._client.xlen(stream_name)
+        stream_entries = self._client.xrange(stream_name, count=chunk_size)
+        
+        # loop until all entries fetched
+        while len(stream_entries) > 0:
+            # store entry ids for indexing
+            entry_ids += [entry[0] for entry in stream_entries]
+            
+            # build timestamps as specified
+            for entry in stream_entries:
+                # use redis stream ids as timestamps
+                if timestamp_source.lower() == "redis":
+                    # duplicate stream id as timestamp for each frame in entry
+                    entry_timestamps = np.full((frames_per_entry,), float(entry[0].split(b'-')[0]))
+                    assert entry_timestamps[0] > last_ts # sanity check for monotonic increasing ts
+                    last_ts = entry_timestamps[0]
+                else:
+                    assert timestamp_source in entry[1].keys() # not all entries have to have the same keys
+                    if timestamp_encoding == "str":
+                        # pretty risky casting string to dtype, but some timestamps are stored as strings
+                        entry_timestamps = np.full((frames_per_entry,), timestamp_dtype(str(entry[1][timestamp_source])))
+                    elif timestamp_encoding == "buffer":
+                        # byte buffer reading, with duplicating timestamp if only one
+                        entry_timestamps = np.frombuffer(entry[1][timestamp_source], dtype=timestamp_dtype)
+                        if entry_timestamps.size() == 1 and frames_per_entry > 1:
+                            entry_timestamps = np.full((frames_per_entry,), entry_timestamps.item())
+                        elif entry_timestamps.size() != frames_per_entry:
+                            raise AssertionError(
+                                f"Unexpected shape for timestamps of entry {entry[0]}. " + 
+                                f"Expected: (1,) or ({frames_per_entry},). Found: {entry_timestamps.shape}"
+                            )
+                    assert np.all(entry_timestamps > last_ts) # sanity check for monotonic increasing ts
+                    last_ts = entry_timestamps[-1]
+                # add timestamps to list
+                timestamps.append(entry_timestamps)
+            
+            # read next entries
+            last_id = stream_entries[-1][0]
+            sub_ms_identifier = int(last_id.split(b'-')[-1])
+            next_id = last_id.replace(
+                b'-' + bytes(str(sub_ms_identifier)),
+                b'-' + bytes(str(sub_ms_identifier + 1))
+            )
+            stream_entries = self._client.xrange(stream_name, min=next_id, count=chunk_size)
+        
+        # sanity check lengths
+        assert len(timestamps) == num_entries
+        assert len(entry_ids) == num_entries
+        
+        # join all timestamps
+        timestamps = np.concatenate(timestamps)
+        
+        # compute frequency and period if necessary
+        if sampling_frequency is None:
+            sampling_period = float(timestamps[-1] - timestamps[frames_per_entry - 1]) / ((num_entries - 1.) * frames_per_entry)
+            sampling_frequency = 1. / sampling_period
+        else:
+            sampling_period = 1. / sampling_frequency
+        
+        # "smooth" timestamps to regular
+        if smooth_timestamps:
+            # estimate starting timestamp by working backwards from end
+            # (this is probably better when data come in bursts - the first sample has more delay
+            # from its true timestamp than the last sample in a burst)
+            stream_start_time = timestamps[-1] - (num_entries * frames_per_entry - 1) * sampling_period
+            timestamps_smth = np.linspace(stream_start_time, timestamps[-1], num_entries * frames_per_entry)
+            # subtract so that timestamps_smth <= timestamps, since the true timestamps can't
+            # possibly precede the logged timestamps
+            diff = np.max(timestamps - timestamps_smth)
+            timestamps_smth -= diff
+            timestamps = timestamps_smth
+        
+        # get start time if necessary
+        if start_time is None:
+            start_time = timestamps[0]
+        timestamps -= start_time
+        assert np.all(timestamps >= 0.) # sanity check
+        
+        return start_time, sampling_frequency, timestamps, entry_ids
 
 
-class RedisRecordingInterface(BaseDataInterface):
+class RedisRecordingInterface(BaseRecordingExtractorInterface):
     """Recording interface for Stavisky Redis conversion"""
+    
+    ExtractorModule = "stavisky_lab_to_nwb.simulated_data.simulated_datarecordinginterface"
+    ExtractorName = "RedisStreamRecordingExtractor"
 
-    def __init__(self):
-        # This should load the data lazily and prepare variables you need
-        pass
-
-    def get_metadata(self):
-        # Automatically retrieve as much metadata as possible
-        metadata = super().get_metadata()
-
-        return metadata
-
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict):
-        # All the custom code to write to PyNWB
-
-        return nwbfile
+    def __init__(
+        self,
+        verbose: bool = True,
+        es_key: str = "ElectricalSeries",
+        port: int,
+        host: str,
+        stream_name: str,
+        data_key: Union[bytes, str],
+        channel_count: int,
+        dtype: Union[str, type, np.dtype],
+        channel_ids: Optional[Sequence] = None,
+        frames_per_entry: int = 1,
+        start_time: Optional[float] = None,
+        sampling_frequency: Optional[float] = None,
+        timestamp_source: Union[bytes, str] = "redis",
+        timestamp_kwargs: dict = {},
+        gain_to_uv: Optional[float] = None,
+        channel_dim: int = 0,
+    ):
+        super().__init__(
+            verbose=verbose,
+            es_key=es_key,
+            port=port,
+            host=host,
+            stream_name=stream_name,
+            data_key=data_key,
+            channel_count=channel_count,
+            dtype=dtype,
+            channel_ids=channel_ids,
+            frames_per_entry=frames_per_entry,
+            start_time=start_time,
+            sampling_frequency=sampling_frequency,
+            timestamp_source=timestamp_source,
+            timestamp_kwargs=timestamp_kwargs,
+            gain_to_uv=gain_to_uv,
+            channel_dim=channel_dim,
+        )
