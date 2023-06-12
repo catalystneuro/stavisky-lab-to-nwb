@@ -23,13 +23,13 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
         channel_dim: int = 0, # TODO: confusing name?
-    ):
+    ):        
+        # initialize base class
+        BaseRecordingSegment.__init__(self, time_vector=timestamps, t_start=start_time)
+        
         # Assign Redis client and check connection
         self._client = client
         self._client.ping()
-        
-        # initialize base class
-        BaseRecordingSegment.__init__(self, time_vector=timestamps, t_start=start_time)
         
         # arg checks
         assert channel_dim in [0, 1]
@@ -70,12 +70,14 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         end_entry_idx = end_frame // self._frames_per_entry
         end_frame_idx = end_frame % self._frames_per_entry
         
+        # read needed entries
         stream_entries = self._client.xrange(
             self._stream_name,
             min=self._entry_ids[start_entry_idx],
             max=self._entry_ids[end_entry_idx],
         )
         
+        # loop through, convert to numpy and stack
         traces = []
         for entry in stream_entries:
             entry_data = np.frombuffer(entry[1][self._data_key], dtype=self._dtype)
@@ -92,7 +94,7 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         # TODO: make more compact
         if start_frame_idx > 0:
             traces = traces[start_frame_idx:]
-        if end_frame_idx < self._frames_per_entry - 1:
+        if end_frame_idx < (self._frames_per_entry - 1):
             traces = traces[:(end_frame_idx + 1 - self._frames_per_entry)]
         if channel_indices is not None:
             traces = traces[:, channel_indices]
