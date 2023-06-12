@@ -1,10 +1,12 @@
 """Primary class for converting ecephys recording."""
+import redis
+import numpy as np
 from pynwb.file import NWBFile
 from typing import Union, Optional, List, Tuple, Sequence, Literal
 
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
 
-from spikeinterface.extractors import BaseRecording, BaseRecordingSegment
+from spikeinterface.core import BaseRecording, BaseRecordingSegment
 
 
 class RedisStreamRecordingSegment(BaseRecordingSegment):
@@ -20,7 +22,7 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         frames_per_entry: int = 1,
         start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
-        channel_dim: int = 0,
+        channel_dim: int = 0, # TODO: confusing name?
     ):
         # Assign Redis client and check connection
         self._client = client
@@ -77,12 +79,12 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         traces = []
         for entry in stream_entries:
             entry_data = np.frombuffer(entry[1][self._data_key], dtype=self._dtype)
-            assert entry_data.size() == (self._frames_per_entry * self._channel_dim)
+            assert entry_data.size == (self._frames_per_entry * self._channel_count)
             if self._frames_per_entry > 1:
                 if self._channel_dim == 0:
-                    entry_data = entry_data.reshape((self._channel_dim, self._frames_per_entry)).T
+                    entry_data = entry_data.reshape((self._channel_count, self._frames_per_entry)).T
                 elif self._channel_dim == 1:
-                    entry_data = entry_data.reshape((self._frames_per_entry, self._channel_dim))
+                    entry_data = entry_data.reshape((self._frames_per_entry, self._channel_count))
             traces.append(entry_data)
         traces = np.concatenate(traces, axis=0)
         
@@ -125,7 +127,15 @@ class RedisStreamRecordingExtractor(BaseRecording):
         
         # Construct channel IDs if not provided
         if channel_ids is None:
-            channel_ids = np.arange(channel_ids).tolist()
+            channel_ids = np.arange(channel_count).tolist()
+        
+        # timestamp kwargs
+        default_ts_kwargs = { # TODO: or just move these to init args?
+            "timestamp_unit": "ms",
+            "chunk_size": 100,
+            "smooth_timestamps": True,
+        }
+        default_ts_kwargs.update(timestamp_kwargs)
         
         # Infer sampling frequency from first and last entry
         stream_len = self._client.xlen(stream_name)
@@ -136,8 +146,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
             timestamp_source=timestamp_source,
             start_time=start_time,
             sampling_frequency=sampling_frequency,
-            chunk_size=10,
-            **timestamp_kwargs
+            **default_ts_kwargs
         )
         
         # Initialize Recording and RecordingSegment
@@ -149,7 +158,6 @@ class RedisStreamRecordingExtractor(BaseRecording):
             data_key=data_key,
             channel_count=channel_count,
             dtype=dtype,
-            channel_ids=channel_ids,
             frames_per_entry=frames_per_entry,
             start_time=start_time,
             sampling_frequency=sampling_frequency,
@@ -181,8 +189,9 @@ class RedisStreamRecordingExtractor(BaseRecording):
         stream_name: str,
         frames_per_entry: int,
         timestamp_source: Union[bytes, str],
-        timestamp_encoding: Literal["str", "buffer"],
-        timestamp_dtype: Union[str, type, np.dtype],
+        timestamp_unit: Literal["s", "ms", "us"],
+        timestamp_encoding: Optional[Literal["str", "buffer"]] = None,
+        timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
         start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
         chunk_size: int = 10,
@@ -210,7 +219,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
                 if timestamp_source.lower() == "redis":
                     # duplicate stream id as timestamp for each frame in entry
                     entry_timestamps = np.full((frames_per_entry,), float(entry[0].split(b'-')[0]))
-                    assert entry_timestamps[0] > last_ts # sanity check for monotonic increasing ts
+                    assert entry_timestamps[0] >= last_ts # sanity check for monotonic increasing ts
                     last_ts = entry_timestamps[0]
                 else:
                     assert timestamp_source in entry[1].keys() # not all entries have to have the same keys
@@ -220,9 +229,9 @@ class RedisStreamRecordingExtractor(BaseRecording):
                     elif timestamp_encoding == "buffer":
                         # byte buffer reading, with duplicating timestamp if only one
                         entry_timestamps = np.frombuffer(entry[1][timestamp_source], dtype=timestamp_dtype)
-                        if entry_timestamps.size() == 1 and frames_per_entry > 1:
+                        if entry_timestamps.size == 1 and frames_per_entry > 1:
                             entry_timestamps = np.full((frames_per_entry,), entry_timestamps.item())
-                        elif entry_timestamps.size() != frames_per_entry:
+                        elif entry_timestamps.size != frames_per_entry:
                             raise AssertionError(
                                 f"Unexpected shape for timestamps of entry {entry[0]}. " + 
                                 f"Expected: (1,) or ({frames_per_entry},). Found: {entry_timestamps.shape}"
@@ -236,8 +245,8 @@ class RedisStreamRecordingExtractor(BaseRecording):
             last_id = stream_entries[-1][0]
             sub_ms_identifier = int(last_id.split(b'-')[-1])
             next_id = last_id.replace(
-                b'-' + bytes(str(sub_ms_identifier)),
-                b'-' + bytes(str(sub_ms_identifier + 1))
+                b'-' + bytes(str(sub_ms_identifier), 'UTF-8'),
+                b'-' + bytes(str(sub_ms_identifier + 1), 'UTF-8')
             )
             stream_entries = self._client.xrange(stream_name, min=next_id, count=chunk_size)
         
@@ -247,6 +256,10 @@ class RedisStreamRecordingExtractor(BaseRecording):
         
         # join all timestamps
         timestamps = np.concatenate(timestamps)
+        if timestamp_unit == "ms":
+            timestamps *= 1e-3
+        elif timestamp_unit == "us":
+            timestamps *= 1e-6
         
         # compute frequency and period if necessary
         if sampling_frequency is None:
@@ -264,8 +277,8 @@ class RedisStreamRecordingExtractor(BaseRecording):
             timestamps_smth = np.linspace(stream_start_time, timestamps[-1], num_entries * frames_per_entry)
             # subtract so that timestamps_smth <= timestamps, since the true timestamps can't
             # possibly precede the logged timestamps
-            diff = np.max(timestamps - timestamps_smth)
-            timestamps_smth -= diff
+            # diff = np.max(timestamps_smth - timestamps)
+            # timestamps_smth -= diff
             timestamps = timestamps_smth
         
         # get start time if necessary
@@ -285,8 +298,6 @@ class RedisRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        verbose: bool = True,
-        es_key: str = "ElectricalSeries",
         port: int,
         host: str,
         stream_name: str,
@@ -301,6 +312,8 @@ class RedisRecordingInterface(BaseRecordingExtractorInterface):
         timestamp_kwargs: dict = {},
         gain_to_uv: Optional[float] = None,
         channel_dim: int = 0,
+        verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
         super().__init__(
             verbose=verbose,
@@ -320,3 +333,35 @@ class RedisRecordingInterface(BaseRecordingExtractorInterface):
             gain_to_uv=gain_to_uv,
             channel_dim=channel_dim,
         )
+
+"""
+if __name__ == "__main__":
+    extractor = RedisStreamRecordingExtractor(
+        port=6379,
+        host="localhost",
+        stream_name="continuousNeural",
+        data_key=b'samples',
+        channel_count=256,
+        dtype=np.int16,
+        channel_ids=None,
+        frames_per_entry=30,
+        start_time=None,
+        sampling_frequency=None,
+        timestamp_source="redis",
+        timestamp_kwargs={
+            "chunk_size": 1000,
+        },
+        gain_to_uv=-100.,
+        channel_dim=1,
+    )
+    traces = extractor.get_traces(
+        segment_index=None,
+        start_frame=0,
+        end_frame=30000,
+        channel_ids=None,
+        order=None,
+        return_scaled=False,
+        cast_unsigned=False,
+    )
+    import pdb; pdb.set_trace()
+"""
