@@ -7,7 +7,7 @@ from spikeinterface.core import BaseRecording, BaseRecordingSegment
 from stavisky_lab_to_nwb.redis_interfaces.redisextractormixin import RedisExtractorMixin
 
 
-class RedisStreamRecordingExtractor(BaseRecording, RedisInterfaceMixin):
+class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
     def __init__(
         self, 
         port: int,

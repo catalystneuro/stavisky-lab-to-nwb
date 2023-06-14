@@ -8,7 +8,7 @@ from spikeinterface.core import BaseSorting, BaseSortingSegment
 from stavisky_lab_to_nwb.redis_interfaces.redisextractormixin import RedisExtractorMixin
 
 
-class RedisStreamSortingExtractor(BaseSorting, RedisInterfaceMixin):
+class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
     def __init__(
         self, 
         port: int,

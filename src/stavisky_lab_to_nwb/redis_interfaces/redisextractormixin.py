@@ -113,7 +113,7 @@ class RedisExtractorMixin:
         
         # "smooth" timestamps if desired
         if smoothing_window > 1:
-            timestamps = RedisInterfaceMixin.smooth_timestamps(
+            timestamps = RedisExtractorMixin.smooth_timestamps(
                 timestamps=timestamps,
                 frames_per_entry=frames_per_entry,
                 window_len=smoothing_window,
