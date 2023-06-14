@@ -6,13 +6,13 @@ from typing import Union, Optional, List, Tuple, Sequence, Literal
 
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
 
-from stavisky_lab_to_nwb.redis_interfaces.redisrecordinginterface import RedisStreamRecordingExtractor
+from stavisky_lab_to_nwb.redis_interfaces.redisrecordingextractor import RedisStreamRecordingExtractor
 
 
 class RedisRecordingInterface(BaseRecordingExtractorInterface):
     """Recording interface for Stavisky Redis conversion"""
     
-    ExtractorModule = "stavisky_lab_to_nwb.simulated_data.simulated_datarecordinginterface"
+    ExtractorModule = "stavisky_lab_to_nwb.redis_interfaces.redisrecordingextractor"
     ExtractorName = "RedisStreamRecordingExtractor"
 
     def __init__(
@@ -74,7 +74,7 @@ if __name__ == "__main__":
             "smoothing_window": 30,
             "smoothing_stride": 30,
         },
-        gain_to_uv=-100.,
+        gain_to_uv=100.,
         channel_dim=1,
     )
     traces = extractor.get_traces(

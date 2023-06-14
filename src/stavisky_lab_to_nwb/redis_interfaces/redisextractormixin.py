@@ -11,7 +11,7 @@ def safe_decode(string_or_bytes: Union[str, bytes]):
         return str(string_or_bytes, "UTF-8")
 
 
-class RedisInterfaceMixin:
+class RedisExtractorMixin:
     _client: redis.Redis
     
     def get_ids_and_timestamps(
@@ -129,6 +129,8 @@ class RedisInterfaceMixin:
         if start_time is None:
             start_time = timestamps[0]
             timestamps -= start_time
+        elif build_timestamps:
+            timestamps -= start_time
         
         assert np.all(timestamps >= 0.) # sanity check
         
@@ -175,11 +177,13 @@ class RedisInterfaceMixin:
         if stride_len > 1:
             smoothed_diff = smoothed_diff[(stride_len // 2)::stride_len]
             smoothed_diff = np.repeat(smoothed_diff, stride_len)
-        # assume first entry is same as second
-        smoothed_diff = np.concatenate([smoothed_diff[:frames_per_entry], smoothed_diff], axis=0)
+        # smoothed_diff = np.concatenate([smoothed_diff[:frames_per_entry], smoothed_diff], axis=0)
         
         # build timestamps and align with original end
-        smoothed_timestamps = np.cumsum(smoothed_diff)
+        smoothed_timestamps = np.empty(timestamps.shape)
+        # (assume first entry is same as second)
+        smoothed_timestamps[:frames_per_entry] = np.cumsum(smoothed_diff[:frames_per_entry])
+        smoothed_timestamps[frames_per_entry:] = np.cumsum(smoothed_diff) + smoothed_timestamps[frames_per_entry-1]
         smoothed_timestamps += timestamps[-1] - smoothed_timestamps[-1]
         
         # optional: check that smoothed timestamps do not precede original

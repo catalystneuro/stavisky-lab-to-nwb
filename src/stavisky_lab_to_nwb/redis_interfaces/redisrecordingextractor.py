@@ -1,13 +1,13 @@
-"Redis sorting extractor."
+"""Redis recording extractor."""
 import redis
 import numpy as np
 from typing import Union, Optional, List, Tuple, Sequence, Literal
 
-from spikeinterface.core import BaseSorting, BaseSortingSegment
-from stavisky_lab_to_nwb.redis_interfaces.redisinterfacemixin import RedisInterfaceMixin
+from spikeinterface.core import BaseRecording, BaseRecordingSegment
+from stavisky_lab_to_nwb.redis_interfaces.redisextractormixin import RedisExtractorMixin
 
 
-class RedisStreamSortingExtractor(BaseSorting, RedisInterfaceMixin):
+class RedisStreamRecordingExtractor(BaseRecording, RedisInterfaceMixin):
     def __init__(
         self, 
         port: int,
@@ -94,48 +94,51 @@ class RedisStreamSortingExtractor(BaseSorting, RedisInterfaceMixin):
         }
 
 
-
-class RedisStreamSortingSegment(BaseSortingSegment):
+class RedisStreamRecordingSegment(BaseRecordingSegment):
     def __init__(
         self, 
         client: redis.Redis,
         stream_name: str,
         data_key: Union[bytes, str],
-        unit_ids: list,
-        unit_count: int,
+        channel_count: int,
         dtype: Union[str, type, np.dtype],
         timestamps: np.ndarray,
         entry_ids: list[bytes],
         frames_per_entry: int = 1,
         start_time: Optional[float] = None,
-        unit_dim: int = 0,
-    ):
-        BaseSegment.__init__(self, t_start=start_time)
+        # sampling_frequency: Optional[float] = None,
+        channel_dim: int = 0, # TODO: confusing name?
+    ):        
+        # initialize base class
+        BaseRecordingSegment.__init__(self, time_vector=timestamps, t_start=start_time)
         
         # Assign Redis client and check connection
         self._client = client
         self._client.ping()
         
+        # arg checks
+        assert channel_dim in [0, 1]
+        assert len(entry_ids) == self._client.xlen(stream_name)
+        
         # save some variables
         self._stream_name = stream_name
         self._data_key = data_key
-        self._unit_count = unit_count
-        self._unit_dim = unit_dim
+        self._channel_count = channel_count
+        self._channel_dim = channel_dim
         self._dtype = dtype
         self._entry_ids = entry_ids
         self._frames_per_entry = frames_per_entry
         self._num_samples = frames_per_entry * len(entry_ids)
-        self._timestamps = timestamps
 
-    def get_unit_spike_train(
-        self,
-        unit_id,
-        start_frame: Optional[int] = None,
-        end_frame: Optional[int] = None,
-    ) -> np.ndarray:
-        # get unit idx
-        unit_idx = unit_ids.index(unit_id)
+    def get_num_samples(self) -> int:
+        return self._num_samples
         
+    def get_traces(
+        self,
+        start_frame: Union[int, None] = None,
+        end_frame: Union[int, None] = None,
+        channel_indices: Union[List, None] = None,
+    ) -> np.ndarray:
         # handle None args
         if start_frame is None:
             start_frame = 0
@@ -160,26 +163,27 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         )
         
         # loop through, convert to numpy and stack
-        spike_idx = []
-        for n, entry in enumerate(stream_entries):
+        traces = []
+        for entry in stream_entries:
             entry_data = np.frombuffer(entry[1][self._data_key], dtype=self._dtype)
-            assert entry_data.size == (self._frames_per_entry * self._unit_count)
+            assert entry_data.size == (self._frames_per_entry * self._channel_count)
             if self._frames_per_entry > 1:
-                if self._unit_dim == 0:
-                    entry_data = entry_data.reshape((self._unit_count, self._frames_per_entry)).T
-                elif self._unit_dim == 1:
-                    entry_data = entry_data.reshape((self._frames_per_entry, self._unit_count))
-            entry_data = entry_data[:, unit_idx]
-            if n == 0 and start_frame_idx > 0:
-                entry_data = entry_data[start_frame_idx:]
-            if n == len(stream_entries) - 1 and end_frame_idx < (self._frames_per_entry - 1):
-                entry_data = entry_data[:(end_frame_idx + 1 - self._frames_per_entry)]
-            has_spike = np.nonzero(entry_data)
-            spike_times = (n + start_entry_idx) * frames_per_entry + np.repeat(has_spike, entry_data[has_spike]) + \
-                float(n == 0) * start_frame_idx
-            spike_idx.append(spike_times)
-        spike_idx = np.concatenate(spike_idx, axis=0)
+                if self._channel_dim == 0:
+                    entry_data = entry_data.reshape((self._channel_count, self._frames_per_entry)).T
+                elif self._channel_dim == 1:
+                    entry_data = entry_data.reshape((self._frames_per_entry, self._channel_count))
+            else:
+                entry_data = entry_data[None, :]
+            traces.append(entry_data)
+        traces = np.concatenate(traces, axis=0)
         
-        spike_train = self._timestamps[spike_idx]
+        # slicing operations
+        # TODO: make more compact
+        if start_frame_idx > 0:
+            traces = traces[start_frame_idx:]
+        if end_frame_idx < (self._frames_per_entry - 1):
+            traces = traces[:(end_frame_idx + 1 - self._frames_per_entry)]
+        if channel_indices is not None:
+            traces = traces[:, channel_indices]
         
-        return spike_train
+        return traces
