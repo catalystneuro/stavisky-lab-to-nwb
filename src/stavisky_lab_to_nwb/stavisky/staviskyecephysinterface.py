@@ -1,5 +1,5 @@
 """Class for converting generic ecephys data."""
-from pynwb.file import NWBFile
+from pynwb import NWBFile
 
 from neuroconv.basedatainterface import BaseDataInterface
 
@@ -15,7 +15,7 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
 
         return metadata
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict):
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict):
         # All the custom code to write to PyNWB
 
         return nwbfile
