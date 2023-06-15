@@ -1,7 +1,7 @@
 """Primary NWBConverter class for this dataset."""
 from neuroconv import NWBConverter
 
-from stavisky_lab_to_nwb.simulated_data import (
+from stavisky_lab_to_nwb.stavisky import (
     # StaviskyPhonemeLogitsInterface, 
     # StaviskyDecodedTextInterface,
     # StaviskySpikingBandPowerInterface,

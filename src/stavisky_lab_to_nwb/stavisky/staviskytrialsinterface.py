@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from typing import Optional
 
-from pynwb.file import NWBFile
+from pynwb import NWBFile
 
 from neuroconv.basedatainterface import BaseDataInterface
 
@@ -25,7 +25,7 @@ class StaviskyTrialsInterface(BaseDataInterface):
         
         return metadata
     
-    def run_conversion(
+    def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,

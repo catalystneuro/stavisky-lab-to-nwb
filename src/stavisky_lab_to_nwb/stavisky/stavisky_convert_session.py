@@ -8,7 +8,7 @@ import numpy as np
 
 from neuroconv.utils import load_dict_from_file, dict_deep_update
 
-from stavisky_lab_to_nwb.simulated_data import StaviskyNWBConverter
+from stavisky_lab_to_nwb.stavisky import StaviskyNWBConverter
 
 
 def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub_test: bool = False):
