@@ -2,13 +2,14 @@
 from neuroconv import NWBConverter
 
 from stavisky_lab_to_nwb.stavisky import (
-    # StaviskyPhonemeLogitsInterface, 
+    # StaviskyPhonemeLogitsInterface,
     # StaviskyDecodedTextInterface,
     # StaviskySpikingBandPowerInterface,
     # RedisSortingInterface,
     # RedisRecordingInterface,
     StaviskyTrialsInterface,
 )
+
 
 class StaviskyNWBConverter(NWBConverter):
     """Primary conversion class for my extracellular electrophysiology dataset."""
@@ -18,11 +19,10 @@ class StaviskyNWBConverter(NWBConverter):
         # Sorting=RedisSortingInterface,
         Trials=StaviskyTrialsInterface,
     )
-    
+
     def __init__(
         self,
         source_data: dict,
         verbose: bool = True,
     ):
         super().__init__(source_data=source_data, verbose=verbose)
-
