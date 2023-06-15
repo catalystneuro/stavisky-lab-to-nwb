@@ -4,11 +4,11 @@ import scipy.signal as ssignal
 from typing import Optional, Literal, Union
 
 
-def safe_decode(string_or_bytes: Union[str, bytes]):
+def safe_decode(string_or_bytes: Union[str, bytes], encoding="utf-8"):
     if isinstance(string_or_bytes, str):
         return string_or_bytes
     else:
-        return str(string_or_bytes, "UTF-8")
+        return str(string_or_bytes, encoding=encoding)
 
 
 class RedisExtractorMixin:
@@ -47,6 +47,7 @@ class RedisExtractorMixin:
             if safe_decode(timestamp_source) != "redis": 
                 assert (timestamp_encoding is not None) and (timestamp_dtype is not None)
             timestamps = np.full((num_entries * frames_per_entry,), np.nan, dtype=np.float64)
+        timestamp_dtype = np.dtype(timestamp_dtype)
         
         # initialize variables for loop
         entry_ids = []
@@ -180,7 +181,7 @@ class RedisExtractorMixin:
         # smoothed_diff = np.concatenate([smoothed_diff[:frames_per_entry], smoothed_diff], axis=0)
         
         # build timestamps and align with original end
-        smoothed_timestamps = np.empty(timestamps.shape)
+        smoothed_timestamps = np.empty(timestamps.shape, dtype=np.float64)
         # (assume first entry is same as second)
         smoothed_timestamps[:frames_per_entry] = np.cumsum(smoothed_diff[:frames_per_entry])
         smoothed_timestamps[frames_per_entry:] = np.cumsum(smoothed_diff) + smoothed_timestamps[frames_per_entry-1]
@@ -190,6 +191,8 @@ class RedisExtractorMixin:
         # since that should not be possible
         if causal_check:
             assert np.all((timestamps - smoothed_timestamps) > 0.)
+        
+        import pdb; pdb.set_trace()
         
         return smoothed_timestamps
         

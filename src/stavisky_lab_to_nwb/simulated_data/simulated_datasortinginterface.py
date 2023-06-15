@@ -1,7 +1,7 @@
 """Primary class for converting sorting data."""
 import redis
 import numpy as np
-from pynwb.file import NWBFile
+from pynwb import NWBFile
 from typing import Union, Optional, List, Tuple, Sequence, Literal
 
 from neuroconv.utils import DeepDict

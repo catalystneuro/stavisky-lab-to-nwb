@@ -1,5 +1,8 @@
 """Class for converting generic ecephys data."""
-from pynwb.file import NWBFile
+import redis
+import numpy as np
+from pynwb import NWBFile, TimeSeries
+from typing import Optional, Union, Literal
 
 from neuroconv.basedatainterface import BaseDataInterface
 
@@ -10,8 +13,23 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
         self,
         port: int,
         host: str,
+        start_time: Optional[float] = None,
+        timestamps: Optional[np.ndarray] = None,
+        timestamp_source: Optional[Union[bytes, Literal["redis"]]] = None,
+        timestamp_encoding: Optional[Literal["str", "buffer"]] = None,
+        timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
+        timestamp_unit: Literal["s", "ms", "us"] = "ms",
     ):
         super().__init__(port=port, host=host)
+        assert (timestamps is not None) or (timestamp_source is not None)
+        if timestamp_source != "redis":
+            assert (timestamp_encoding is not None) and (timestamp_dtype is not None)
+        self._start_time = start_time
+        self._timestamps = timestamps
+        self._timestamp_source = timestamp_source
+        self._timestamp_encoding = timestamp_encoding
+        self._timestamp_dtype = timestamp_dtype
+        self._timestamp_unit = timestamp_unit
 
     def get_metadata(self):
         # Automatically retrieve as much metadata as possible
@@ -19,7 +37,7 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
         
         return metadata
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
@@ -33,41 +51,90 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
         )
         r.ping()
 
+        # get processing module
         module_name = "Processed ecephys"
         module_description = "Contains processed ecephys data like spiking band power"
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
         
+        # prepare timestamps if provided
+        build_timestamps = self._timestamps is None
+        if build_timestamps:
+            timestamps_1ms = []
+            timestamps_20ms = []
+        else:
+            timestamps_1ms = self._timestamps
+            timestamps_20ms = self._timestamps[::20]
+        
         # extract 1 ms data
         sbp_1ms = []
-        timestamps_1ms = []
         
         stream_entries = r.xrange('neuralFeatures_1ms', count=chunk_size)
         while len(stream_entries) > 0:
             for entry in stream_entries:
-                entry_sbp = np.frombuffer(entry[1][b'spiking_band_power'], dtype=np.float32)
-                # TODO: use BRAND_time timestamps?
+                entry_sbp = np.frombuffer(entry[1][b'spike_band_power'], dtype=np.float32)
                 sbp_1ms.append(entry_sbp)
-                timestamps.append(float(str(entry[0], "UTF-8").split("-")[0]))
-            stream_entries = r.xrange('neuralFeatures_1ms', min=stream_entries[-1][0], count=chunk_size)
+                if build_timestamps:
+                    if self._timestamp_source == "redis":
+                        timestamps_1ms.append(float(str(entry[0], "UTF-8").split("-")[0]))
+                    else:
+                        if self._timestamp_encoding == "str":
+                            ts = np.dtype(self._timestamp_dtype)(str(entry[1][self._timestamp_source], "UTF-8"))
+                            timestamps_1ms.append(ts.astype('float64', copy=False))
+                        elif self._timestamp_encoding == "buffer":
+                            ts = np.frombuffer(entry[1][self._timestamp_source], dtype=self._timestamp_dtype)
+                            timestamps_1ms.append(ts.astype('float64', copy=False))
+            last_id = stream_entries[-1][0]
+            sub_ms_identifier = int(last_id.split(b'-')[-1])
+            next_id = last_id.replace(
+                b'-' + bytes(str(sub_ms_identifier), 'UTF-8'),
+                b'-' + bytes(str(sub_ms_identifier + 1), 'UTF-8')
+            )
+            stream_entries = r.xrange('neuralFeatures_1ms', min=next_id, count=chunk_size)
         sbp_1ms = np.stack(sbp_1ms, axis=0)
-        timestamps_1ms = np.array(timestamps_1ms)
+        if build_timestamps:
+            timestamps_1ms = np.array(timestamps_1ms)
         
         # extract 20 ms re-binned data also (at their request)
         sbp_20ms = []
-        timestamps_20ms = []
         
         stream_entries = r.xrange('binnedFeatures_20ms', count=chunk_size)
         while len(stream_entries) > 0:
             for entry in stream_entries:
-                entry_sbp = np.frombuffer(entry[1][b'spiking_band_power_bin'], dtype=np.float32)
+                entry_sbp = np.frombuffer(entry[1][b'spike_band_power_bin'], dtype=np.float32)
                 # TODO: use BRAND_time timestamps?
                 sbp_20ms.append(entry_sbp)
-                timestamps.append(float(str(entry[0], "UTF-8").split("-")[0]))
-            stream_entries = r.xrange('binnedFeatures_20ms', min=stream_entries[-1][0], count=chunk_size)
+                if build_timestamps:
+                    if self._timestamp_source == "redis":
+                        timestamps_20ms.append(float(str(entry[0], "UTF-8").split("-")[0]))
+                    else:
+                        if self._timestamp_encoding == "str":
+                            ts = np.dtype(self._timestamp_dtype)(str(entry[1][self._timestamp_source], "UTF-8"))
+                            timestamps_20ms.append(ts.astype('float64', copy=False))
+                        elif self._timestamp_encoding == "buffer":
+                            ts = np.frombuffer(entry[1][self._timestamp_source], dtype=self._timestamp_dtype)
+                            timestamps_20ms.append(ts.astype('float64', copy=False))
+            last_id = stream_entries[-1][0]
+            sub_ms_identifier = int(last_id.split(b'-')[-1])
+            next_id = last_id.replace(
+                b'-' + bytes(str(sub_ms_identifier), 'UTF-8'),
+                b'-' + bytes(str(sub_ms_identifier + 1), 'UTF-8')
+            )
+            stream_entries = r.xrange('binnedFeatures_20ms', min=next_id, count=chunk_size)
         sbp_20ms = np.stack(sbp_20ms, axis=0)
-        timestamps_20ms = np.array(timestamps_20ms)
+        if build_timestamps:
+            timestamps_20ms = np.array(timestamps_20ms)
         
         # TODO: use timestamp smoothing?
+        if self._timestamp_unit == "ms":
+            timestamps_1ms *= 1e-3
+            timestamps_20ms *= 1e-3
+        elif self._timestamp_unit == "us":
+            timestamps_1ms *= 1e-6
+            timestamps_20ms *= 1e-6
+        
+        start_time = self._start_time or timestamps_1ms[0]
+        timestamps_1ms -= start_time
+        timestamps_20ms -= start_time
         
         sbp_1ms_timeseries = TimeSeries(
             name="spiking_band_power_1ms",
@@ -84,10 +151,11 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
             description="Spiking band power in the 250 Hz to 5 kHz frequency range computed 1 kHz and re-binned to 50 Hz",
         )
         
-        processing_module.add_data_interface(logits_timeseries)
+        processing_module.add_data_interface(sbp_1ms_timeseries)
+        processing_module.add_data_interface(sbp_20ms_timeseries)
         
         r.close()
         
         return nwbfile
-        
+
         
