@@ -3,6 +3,7 @@ from pynwb.file import NWBFile
 
 from neuroconv.basedatainterface import BaseDataInterface
 
+
 class RedisSortingInterface(BaseDataInterface):
     """Sorting interface for Stavisky Redis conversion"""
 

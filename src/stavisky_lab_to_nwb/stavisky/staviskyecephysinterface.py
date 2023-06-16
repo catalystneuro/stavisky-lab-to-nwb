@@ -3,6 +3,7 @@ from pynwb import NWBFile
 
 from neuroconv.basedatainterface import BaseDataInterface
 
+
 class StaviskySpikingBandPowerInterface(BaseDataInterface):
     """Spiking band power interface for Stavisky Redis conversion"""
 
