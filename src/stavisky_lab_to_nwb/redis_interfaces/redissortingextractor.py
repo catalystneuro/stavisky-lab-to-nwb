@@ -178,16 +178,16 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         if start_frame is None:
             start_frame = 0
         if end_frame is None:
-            end_frame = self._num_samples - 1 # inclusive
+            end_frame = self._num_samples
         
         # arg check (not allowing negative indices currently)
-        assert start_frame >= 0
-        assert end_frame < self._num_samples
+        assert start_frame >= 0 and start_frame < self.num_samples
+        assert end_frame > 0 and end_frame <= self._num_samples
         
         # convert to entry number and within-entry idx
         start_entry_idx = start_frame // self._frames_per_entry
         # start_frame_idx = start_frame % self._frames_per_entry
-        end_entry_idx = end_frame // self._frames_per_entry
+        end_entry_idx = (end_frame - 1) // self._frames_per_entry
         # end_frame_idx = end_frame % self._frames_per_entry
         
         # read needed entries

@@ -93,6 +93,7 @@ class RedisExtractorMixin:
                     count += 1
             
             # read next entries
+            # TODO: use '(' notation for exclusive range: see https://redis.io/commands/xrange/
             last_id = stream_entries[-1][0]
             sub_ms_identifier = int(last_id.split(b'-')[-1])
             next_id = last_id.replace(
