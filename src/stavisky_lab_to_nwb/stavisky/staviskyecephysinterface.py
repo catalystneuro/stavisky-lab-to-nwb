@@ -8,6 +8,7 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
 
     def __init__(self):
         # This should load the data lazily and prepare variables you need
+        pass
 
     def get_metadata(self):
         # Automatically retrieve as much metadata as possible

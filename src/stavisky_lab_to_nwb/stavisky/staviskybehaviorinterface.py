@@ -4,7 +4,7 @@ from pynwb import NWBFile
 from neuroconv.basedatainterface import BaseDataInterface
 
 class StaviskyPhonemeLogitsInterface(BaseDataInterface):
-    """Decoding phoneme logits interface for Stavisky Redis conversion""""
+    """Decoding phoneme logits interface for Stavisky Redis conversion"""
 
     def __init__(self):
         # This should load the data lazily and prepare variables you need

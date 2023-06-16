@@ -42,8 +42,8 @@ class StaviskyTrialsInterface(BaseDataInterface):
         session_start_time = np.frombuffer(r.xrange("metadata")[0][1][b"startTime"], dtype=np.float64).item()
 
         # Extract trial information
-        trial_info = r.xrange("trial_info", count=(10 if stub_test else None))
-        task_state = r.xrange("task_state", count=(10 if stub_test else None))
+        trial_info = r.xrange("trial_info")
+        task_state = r.xrange("task_state")
 
         # Parse and store "trial_info" by trial ID
         trial_dict = {}
@@ -55,7 +55,7 @@ class StaviskyTrialsInterface(BaseDataInterface):
             trial_end_time = trial_end_ts - session_start_time
             delay = float(trial[b"delay"])
             intertrial_interval = float(trial[b"interTrialSleep"])
-            sentence_cue = trial[b"sentenceCue"].decode("UTF-8")
+            sentence_cue = trial[b"sentenceCue"].decode("utf-8")
             trial_dict[trial_id] = {
                 "start_time": trial_start_time,
                 "stop_time": trial_end_time,
