@@ -23,7 +23,7 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
 
 
 class StaviskyDecodedTextInterface(BaseDataInterface):
-    """Decoded text interface for Stavisky Redis conversion""""
+    """Decoded text interface for Stavisky Redis conversion"""
 
     def __init__(self):
         # This should load the data lazily and prepare variables you need
