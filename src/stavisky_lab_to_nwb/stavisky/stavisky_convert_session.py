@@ -71,7 +71,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     r.close()
 
     # Update default metadata with the editable in the corresponding yaml file
-    editable_metadata_path = Path(__file__).parent / "simulated_data_metadata.yaml"
+    editable_metadata_path = Path(__file__).parent / "stavisky_metadata.yaml"
     editable_metadata = load_dict_from_file(editable_metadata_path)
     metadata = dict_deep_update(metadata, editable_metadata)
 
