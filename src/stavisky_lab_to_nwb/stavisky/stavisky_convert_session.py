@@ -42,8 +42,14 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     # conversion_options.update(dict(Sorting=dict()))
 
     # Add Trials
-    source_data.update(dict(Trials=dict(port=port, host=host)))
-    conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
+    # source_data.update(dict(Trials=dict(port=port, host=host)))
+    # conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
+    
+    # Add Decoding
+    source_data.update(dict(PhonemeLogits=dict(port=port, host=host)))
+    conversion_options.update(dict(PhonemeLogits=dict()))
+    source_data.update(dict(DecodedText=dict(port=port, host=host)))
+    conversion_options.update(dict(DecodedText=dict()))
 
     converter = StaviskyNWBConverter(source_data=source_data)
 
@@ -71,7 +77,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     r.close()
 
     # Update default metadata with the editable in the corresponding yaml file
-    editable_metadata_path = Path(__file__).parent / "simulated_data_metadata.yaml"
+    editable_metadata_path = Path(__file__).parent / "stavisky_metadata.yaml"
     editable_metadata = load_dict_from_file(editable_metadata_path)
     metadata = dict_deep_update(metadata, editable_metadata)
 
@@ -84,7 +90,7 @@ if __name__ == "__main__":
     # Parameters for conversion
     port = 6379
     host = "localhost"
-    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/simulated_data/").expanduser()
+    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_decoding/").expanduser()
     stub_test = False
 
     session_to_nwb(
