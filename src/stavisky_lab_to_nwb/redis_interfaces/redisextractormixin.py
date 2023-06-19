@@ -19,10 +19,10 @@ class RedisExtractorMixin:
         stream_name: str,
         timestamp_unit: Literal["s", "ms", "us"],
         frames_per_entry: int = 1,
-        timestamps: Optional[np.ndarray] = None,
+        timestamps: Optional[list] = None,
         start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
-        timestamp_source: Optional[Union[bytes, Literal["redis"]]] = None,
+        timestamp_source: Optional[str] = None,
         timestamp_encoding: Optional[Literal["str", "buffer"]] = None,
         timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
         chunk_size: int = 10,
@@ -37,6 +37,7 @@ class RedisExtractorMixin:
         if timestamps is not None:
             assert timestamps.ndim == 1
             assert len(timestamps) == num_entries * frames_per_entry
+            timestamps = np.array(timestamps, dtype=np.float64)
         elif (start_time is not None) and (sampling_frequency is not None):
             timestamps = np.arange(num_entries * frames_per_entry, dtype=np.float64) / sampling_frequency
         
@@ -46,6 +47,8 @@ class RedisExtractorMixin:
             assert (timestamp_source is not None)
             if safe_decode(timestamp_source) != "redis": 
                 assert (timestamp_encoding is not None) and (timestamp_dtype is not None)
+            elif not isinstance(timestamp_source, bytes):
+                timestamp_source = bytes(timestamp_source, "utf-8")
             timestamps = np.full((num_entries * frames_per_entry,), np.nan, dtype=np.float64)
         timestamp_dtype = np.dtype(timestamp_dtype)
         
@@ -93,14 +96,9 @@ class RedisExtractorMixin:
                     count += 1
             
             # read next entries
-            # TODO: use '(' notation for exclusive range: see https://redis.io/commands/xrange/
-            last_id = stream_entries[-1][0]
-            sub_ms_identifier = int(last_id.split(b'-')[-1])
-            next_id = last_id.replace(
-                b'-' + bytes(str(sub_ms_identifier), 'UTF-8'),
-                b'-' + bytes(str(sub_ms_identifier + 1), 'UTF-8')
-            )
-            stream_entries = self._client.xrange(stream_name, min=next_id, count=chunk_size)
+            # '(' notation means exclusive range: see https://redis.io/commands/xrange/
+            stream_entries = self._client.xrange(
+                stream_name, min=b'(' + stream_entries[-1][0], count=chunk_size)
         
         # sanity check output
         assert len(entry_ids) == num_entries
@@ -192,8 +190,6 @@ class RedisExtractorMixin:
         # since that should not be possible
         if causal_check:
             assert np.all((timestamps - smoothed_timestamps) > 0.)
-        
-        import pdb; pdb.set_trace()
         
         return smoothed_timestamps
         

@@ -4,9 +4,9 @@ from neuroconv import NWBConverter
 from stavisky_lab_to_nwb.simulated_data import (
     # StaviskyPhonemeLogitsInterface, 
     # StaviskyDecodedTextInterface,
-    # StaviskySpikingBandPowerInterface,
-    # RedisSortingInterface,
-    # RedisRecordingInterface,
+    StaviskySpikingBandPowerInterface,
+    RedisSortingInterface,
+    RedisRecordingInterface,
     StaviskyTrialsInterface,
 )
 
@@ -14,9 +14,10 @@ class StaviskyNWBConverter(NWBConverter):
     """Primary conversion class for my extracellular electrophysiology dataset."""
 
     data_interface_classes = dict(
-        # Recording=RedisRecordingInterface,
-        # Sorting=RedisSortingInterface,
-        Trials=StaviskyTrialsInterface,
+        Recording=RedisRecordingInterface,
+        Sorting=RedisSortingInterface,
+        SpikingBandPower=StaviskySpikingBandPowerInterface,
+        # Trials=StaviskyTrialsInterface,
     )
     
     def __init__(

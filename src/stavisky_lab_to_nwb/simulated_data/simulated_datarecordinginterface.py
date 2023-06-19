@@ -2,7 +2,7 @@
 import redis
 import numpy as np
 from pynwb.file import NWBFile
-from typing import Union, Optional, List, Tuple, Sequence, Literal
+from typing import Union, Optional, List, Tuple, Literal
 
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
 
@@ -12,7 +12,7 @@ from stavisky_lab_to_nwb.redis_interfaces.redisrecordingextractor import RedisSt
 class RedisRecordingInterface(BaseRecordingExtractorInterface):
     """Recording interface for Stavisky Redis conversion"""
     
-    ExtractorModule = "stavisky_lab_to_nwb.redis_interfaces.redisrecordingextractor"
+    ExtractorModuleName = "stavisky_lab_to_nwb.redis_interfaces.redisrecordingextractor"
     ExtractorName = "RedisStreamRecordingExtractor"
 
     def __init__(
@@ -20,14 +20,15 @@ class RedisRecordingInterface(BaseRecordingExtractorInterface):
         port: int,
         host: str,
         stream_name: str,
-        data_key: Union[bytes, str],
+        data_key: str,
         channel_count: int,
         dtype: Union[str, type, np.dtype],
-        channel_ids: Optional[Sequence] = None,
+        channel_ids: Optional[list] = None,
         frames_per_entry: int = 1,
+        timestamps: Optional[list] = None,
         start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
-        timestamp_source: Union[bytes, str] = "redis",
+        timestamp_source: str = "redis",
         timestamp_kwargs: dict = {},
         gain_to_uv: Optional[float] = None,
         channel_dim: int = 0,

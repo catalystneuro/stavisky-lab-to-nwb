@@ -1,7 +1,7 @@
 """Redis recording extractor."""
 import redis
 import numpy as np
-from typing import Union, Optional, List, Tuple, Sequence, Literal
+from typing import Union, Optional, List, Tuple, Literal
 
 from spikeinterface.core import BaseRecording, BaseRecordingSegment
 from stavisky_lab_to_nwb.redis_interfaces.redisextractormixin import RedisExtractorMixin
@@ -16,12 +16,12 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         data_key: Union[bytes, str],
         channel_count: int,
         dtype: Union[str, type, np.dtype],
-        channel_ids: Optional[Sequence] = None,
+        channel_ids: Optional[list] = None,
         frames_per_entry: int = 1,
-        timestamps: Optional[np.ndarray] = None,
+        timestamps: Optional[list] = None,
         start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
-        timestamp_source: Union[bytes, Literal["redis"]] = "redis",
+        timestamp_source: Union[bytes, str] = "redis",
         timestamp_kwargs: dict = {},
         gain_to_uv: Optional[float] = None,
         channel_dim: int = 0,
@@ -52,6 +52,7 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         start_time, sampling_frequency, timestamps, entry_ids = self.get_ids_and_timestamps(
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
+            timestamps=timestamps,
             timestamp_source=timestamp_source,
             start_time=start_time,
             sampling_frequency=sampling_frequency,
@@ -122,7 +123,7 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         
         # save some variables
         self._stream_name = stream_name
-        self._data_key = data_key
+        self._data_key = bytes(data_key, "utf-8") if isinstance(data_key, str) else data_key
         self._channel_count = channel_count
         self._channel_dim = channel_dim
         self._dtype = dtype
@@ -146,7 +147,7 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
             end_frame = self._num_samples
         
         # arg check (not allowing negative indices currently)
-        assert start_frame >= 0 and start_frame < self.num_samples
+        assert start_frame >= 0 and start_frame < self._num_samples
         assert end_frame > 0 and end_frame <= self._num_samples
         
         # convert to entry number and within-entry idx

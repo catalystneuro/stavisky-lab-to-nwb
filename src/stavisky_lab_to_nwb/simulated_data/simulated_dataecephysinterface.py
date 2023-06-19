@@ -5,6 +5,7 @@ from pynwb import NWBFile, TimeSeries
 from typing import Optional, Union, Literal
 
 from neuroconv.basedatainterface import BaseDataInterface
+from neuroconv.tools.nwb_helpers import get_module
 
 class StaviskySpikingBandPowerInterface(BaseDataInterface):
     """Spiking band power interface for Stavisky Redis conversion"""
@@ -14,22 +15,26 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
         port: int,
         host: str,
         start_time: Optional[float] = None,
-        timestamps: Optional[np.ndarray] = None,
-        timestamp_source: Optional[Union[bytes, Literal["redis"]]] = None,
-        timestamp_encoding: Optional[Literal["str", "buffer"]] = None,
+        timestamps: Optional[list] = None,
+        timestamp_source: Optional[str] = None,
+        timestamp_encoding: Optional[str] = None,
         timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
         timestamp_unit: Literal["s", "ms", "us"] = "ms",
     ):
         super().__init__(port=port, host=host)
         assert (timestamps is not None) or (timestamp_source is not None)
-        if timestamp_source != "redis":
+        if timestamp_source is not None and timestamp_source != "redis":
             assert (timestamp_encoding is not None) and (timestamp_dtype is not None)
+            timestamp_source = bytes(timestamp_source, "utf-8")
+        if timestamp_encoding is not None:
+            assert timestamp_encoding in ["str", "buffer"]
         self._start_time = start_time
-        self._timestamps = timestamps
+        self._timestamps = timestamps if timestamps is None else np.array(timestamps, dtype=np.float64)
         self._timestamp_source = timestamp_source
         self._timestamp_encoding = timestamp_encoding
         self._timestamp_dtype = timestamp_dtype
         self._timestamp_unit = timestamp_unit
+            
 
     def get_metadata(self):
         # Automatically retrieve as much metadata as possible

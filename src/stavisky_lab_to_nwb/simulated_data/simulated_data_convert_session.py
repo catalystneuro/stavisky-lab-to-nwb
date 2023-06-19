@@ -34,16 +34,30 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     conversion_options = dict()
 
     # Add Recording
-    # source_data.update(dict(Recording=dict(port=port, host=host)))
-    # conversion_options.update(dict(Recording=dict()))
+    source_data.update(dict(Recording=dict(
+        port=port, host=host, stream_name="continuousNeural", data_key="samples",
+        channel_count=256, dtype="int16", frames_per_entry=30, gain_to_uv=100, 
+        timestamp_source="redis", timestamp_kwargs=dict(chunk_size=10000, timestamp_unit="ms"), 
+        channel_dim=1,
+    )))
+    conversion_options.update(dict(Recording=dict()))
 
     # Add Sorting
-    # source_data.update(dict(Sorting=dict()))
-    # conversion_options.update(dict(Sorting=dict()))
+    source_data.update(dict(Sorting=dict(
+        port=port, host=host, stream_name="neuralFeatures_1ms", data_key="threshold_crossings",
+        unit_count=256, dtype="int16", 
+        timestamp_source="redis", timestamp_kwargs=dict(chunk_size=10000, timestamp_unit="ms")
+    )))
+    conversion_options.update(dict(Sorting=dict()))
+    
+    # Add SBP
+    source_data.update(dict(SpikingBandPower=dict(
+        port=port, host=host, timestamp_source="redis")))
+    conversion_options.update(dict(SpikingBandPower=dict()))
     
     # Add Trials
-    source_data.update(dict(Trials=dict(port=port, host=host)))
-    conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
+    # source_data.update(dict(Trials=dict(port=port, host=host)))
+    # conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
 
     converter = StaviskyNWBConverter(source_data=source_data)
     
@@ -82,7 +96,7 @@ if __name__ == "__main__":
     # Parameters for conversion
     port = 6379
     host = "localhost"
-    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/simulated_data/").expanduser()
+    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_ecephys/").expanduser()
     stub_test = False
 
     session_to_nwb(port=port, 
