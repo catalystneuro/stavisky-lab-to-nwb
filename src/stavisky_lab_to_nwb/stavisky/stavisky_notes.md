@@ -76,7 +76,7 @@ Here is an overview of each data stream in the RDB file: *(bold question marks m
   - `"delay"` - int indicating delay from trial start to go cue, in milliseconds
   - `"interTrialSleep"` - intertrial interval between current and next trial, in milliseconds
   - `"sentenceCue"` - text sentence used as audio input/decoding target for the trial
-- `"binned:decoderOutput:stream"` - List of length 5750. Output of brain-to-text decoder. Entries follow the pattern \[start, logits, decoded sentence so far, logits, decoded sentence so far, ... , logits, final decoded sentence, end, start, logits ...\]. 
+- `"binned:decoderOutput:stream"` - List of length 5750. Output of brain-to-text decoder. Entries follow the pattern \[start, logits, decoded sentence so far, logits, decoded sentence so far, ... , logits, final decoded sentence, end, start, logits ...\].
   - start dict - has one key, `"start"`, which maps to corresponding entry ID which is unix timestamp. Ex: `b'1677021306179-0'`
   - logits dict - has one key, `"logits"`, which maps to 164-byte sequence, float32 dtype, array of shape (41,). Each entry corresponds to the 39 phonemes, plus silence and a space between words
   - decoded sentence dict - has one key, either `"partial_decoded_sentence"` or `"final_decoded_sentence"`, mapping to text decoded so far. Ex: `b' my family is very need'`
@@ -103,7 +103,7 @@ Here is an overview of each data stream in the RDB file: *(bold question marks m
 - `"graph_status"` - List of length 9. Status of graph (e.g. initialized, running, etc.). Doesn't seem particularly useful
 - `"threshold_values1"` - List of length 458055 (so ~1 kHz?). Spikes simulated at 30 kHz from model-generated firing rates. Keys:
   - **????** `"ts_start"` - string timestamp. Ex: `b'12601.696126469'`
-  - **????** `"ts_in"` - string timestamp, same format as above. Not sure what it means. 
+  - **????** `"ts_in"` - string timestamp, same format as above. Not sure what it means.
   - **????** `"ts"` - another string timestamp, same format as above.
   - **????** `"ts_end"` - another string timestamp.
   - `"i"` - string of int, index in list.
@@ -147,5 +147,5 @@ Definitely:
 No:
 - `"microphone"`, `"mfcc"`. Microphone input and feature extraction are used to generate simulated neural data. So, they probably won't be present in actual experimental data.
 - `"threshold_values1"`, `"firing_rates"`. Simulated neural activity parameters. Again, won't be present in actual experiments.
-- `"cb_gen_1"`. Doesn't seem to contain any actual data and only records of when/where data was sent through UDP. 
+- `"cb_gen_1"`. Doesn't seem to contain any actual data and only records of when/where data was sent through UDP.
 - `"buttonAdapter_output"`. Seems pretty useless, used to control trial timings, etc. but those are stored elsewhere.
