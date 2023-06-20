@@ -25,6 +25,7 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         timestamp_source: Union[bytes, Literal["redis"]] = "redis",
         timestamp_kwargs: dict = {},
         unit_dim: int = 0,
+        recording_frequency_ratio: int = 1,
     ):
         # Instantiate Redis client and check connection
         self._client = redis.Redis(
@@ -61,7 +62,8 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         
         # Initialize Sorting and SortingSegment
         # NOTE: does not support multiple segments, assumes continuous recording for whole stream
-        BaseSorting.__init__(self, unit_ids=unit_ids, sampling_frequency=sampling_frequency)
+        BaseSorting.__init__(self, unit_ids=unit_ids, 
+            sampling_frequency=sampling_frequency * recording_frequency_ratio)
         sorting_segment = RedisStreamSortingSegment(
             client=self._client,
             stream_name=stream_name,
@@ -70,11 +72,12 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             unit_ids=unit_ids,
             dtype=dtype,
             frames_per_entry=frames_per_entry,
-            start_time=start_time,
+            start_time=0, # start_time,
             # sampling_frequency=sampling_frequency,
             timestamps=timestamps,
             entry_ids=entry_ids,
             unit_dim=unit_dim,
+            recording_frequency_ratio=recording_frequency_ratio,
         )
         self.add_sorting_segment(sorting_segment)
         
@@ -90,6 +93,12 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             "timestamp_source": timestamp_source,
             # "timestamp_kwargs": timestamp_kwargs,
         }
+    
+    def register_recording(self, recording, check_spike_frames=True):
+        if np.isclose(self.get_sampling_frequency(), recording.get_sampling_frequency(), rtol=1e-3):
+            self._sampling_frequency = recording.get_sampling_frequency() # TODO: terrible idea, don't do this
+        super().register_recording(recording) # , check_spike_frames=check_spike_frames) # version issue?
+        
         
 
 class RedisStreamSortingSegment(BaseSortingSegment):
@@ -106,6 +115,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         frames_per_entry: int = 1,
         start_time: Optional[float] = None,
         unit_dim: int = 0,
+        recording_frequency_ratio: int = 1,
     ):
         BaseSortingSegment.__init__(self, t_start=start_time)
         
@@ -124,6 +134,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         self._frames_per_entry = frames_per_entry
         self._num_samples = frames_per_entry * len(entry_ids)
         self._timestamps = timestamps
+        self._recording_frequency_ratio = recording_frequency_ratio
     
         # make chunk size an init arg?
         self._load_spike_trains(chunk_size=5000)
@@ -180,5 +191,6 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         
         spike_frames = self._spike_frames[unit_idx]
         spike_frames = spike_frames[(spike_frames >= start_frame) & (spike_frames < end_frame)]
+        spike_frames *= self._recording_frequency_ratio
         
         return spike_frames

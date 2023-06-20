@@ -26,4 +26,6 @@ class StaviskyNWBConverter(NWBConverter):
         verbose: bool = True,
     ):
         super().__init__(source_data=source_data, verbose=verbose)
+        
+        self.data_interface_objects["Sorting"].register_recording(self.data_interface_objects["Recording"])
 

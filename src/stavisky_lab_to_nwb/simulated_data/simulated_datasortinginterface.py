@@ -31,6 +31,7 @@ class RedisSortingInterface(BaseSortingExtractorInterface):
         sampling_frequency: Optional[float] = None,
         timestamp_source: str = "redis",
         timestamp_kwargs: dict = {},
+        recording_frequency_ratio: int = 1,
         unit_dim: int = 0,
         verbose: bool = True,
     ):
@@ -49,6 +50,7 @@ class RedisSortingInterface(BaseSortingExtractorInterface):
             timestamp_source=timestamp_source,
             timestamp_kwargs=timestamp_kwargs,
             unit_dim=unit_dim,
+            recording_frequency_ratio=recording_frequency_ratio,
         )
 
     def get_metadata(self):

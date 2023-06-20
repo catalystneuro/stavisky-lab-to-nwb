@@ -37,7 +37,8 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     source_data.update(dict(Recording=dict(
         port=port, host=host, stream_name="continuousNeural", data_key="samples",
         channel_count=256, dtype="int16", frames_per_entry=30, gain_to_uv=100, 
-        timestamp_source="redis", timestamp_kwargs=dict(chunk_size=10000, timestamp_unit="ms"), 
+        timestamp_source="redis", timestamp_kwargs=dict(
+            chunk_size=10000, timestamp_unit="ms", smoothing_window=13741620*2), 
         channel_dim=1,
     )))
     conversion_options.update(dict(Recording=dict()))
@@ -45,8 +46,9 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     # Add Sorting
     source_data.update(dict(Sorting=dict(
         port=port, host=host, stream_name="neuralFeatures_1ms", data_key="threshold_crossings",
-        unit_count=256, dtype="int16", 
-        timestamp_source="redis", timestamp_kwargs=dict(chunk_size=10000, timestamp_unit="ms")
+        unit_count=256, dtype="int16", recording_frequency_ratio=30,
+        timestamp_source="redis", timestamp_kwargs=dict(
+            chunk_size=10000, timestamp_unit="ms", smoothing_window=458054*2),
     )))
     conversion_options.update(dict(Sorting=dict()))
     
