@@ -17,7 +17,7 @@ setup(
     long_description_content_type="text/markdown",
     author="CatalystNeuro",
     author_email="ben.dichter@catalystneuro.com",
-    url = "https://github.com/catalystneuro/stavisky-lab-to-nwb",
+    url="https://github.com/catalystneuro/stavisky-lab-to-nwb",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     include_package_data=True,
