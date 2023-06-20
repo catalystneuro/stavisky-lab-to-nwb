@@ -10,13 +10,12 @@ from stavisky_lab_to_nwb.simulated_data import SimulatedDataNWBConverter
 
 
 def session_to_nwb(data_dir_path: Union[str, Path], output_dir_path: Union[str, Path], stub_test: bool = False):
-
     data_dir_path = Path(data_dir_path)
     output_dir_path = Path(output_dir_path)
     if stub_test:
         output_dir_path = output_dir_path / "nwb_stub"
     output_dir_path.mkdir(parents=True, exist_ok=True)
-    
+
     session_id = "subject_identifier_usually"
     nwbfile_path = output_dir_path / f"{session_id}.nwb"
 
@@ -26,7 +25,7 @@ def session_to_nwb(data_dir_path: Union[str, Path], output_dir_path: Union[str, 
     # Add Recording
     source_data.update(dict(Recording=dict()))
     conversion_options.update(dict(Recording=dict()))
-    
+
     # Add LFP
     source_data.update(dict(LFP=dict()))
     conversion_options.update(dict(LFP=dict()))
@@ -40,15 +39,13 @@ def session_to_nwb(data_dir_path: Union[str, Path], output_dir_path: Union[str, 
     conversion_options.update(dict(Behavior=dict()))
 
     converter = SimulatedDataNWBConverter(source_data=source_data)
-    
+
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    datetime.datetime(
-        year=2020, month=1, day=1, tzinfo=ZoneInfo("US/Eastern")
-    )
+    datetime.datetime(year=2020, month=1, day=1, tzinfo=ZoneInfo("US/Eastern"))
     date = datetime.datetime.today()  # TO-DO: Get this from author
     metadata["NWBFile"]["session_start_time"] = date
-    
+
     # Update default metadata with the editable in the corresponding yaml file
     editable_metadata_path = Path(__file__).parent / "simulated_data_metadata.yaml"
     editable_metadata = load_dict_from_file(editable_metadata_path)
@@ -59,13 +56,13 @@ def session_to_nwb(data_dir_path: Union[str, Path], output_dir_path: Union[str, 
 
 
 if __name__ == "__main__":
-    
     # Parameters for conversion
     data_dir_path = Path("/Directory/With/Raw/Formats/")
     output_dir_path = Path("~/conversion_nwb/")
     stub_test = False
 
-    session_to_nwb(data_dir_path=data_dir_path, 
-                    output_dir_path=output_dir_path, 
-                    stub_test=stub_test,
-                    )
+    session_to_nwb(
+        data_dir_path=data_dir_path,
+        output_dir_path=output_dir_path,
+        stub_test=stub_test,
+    )
