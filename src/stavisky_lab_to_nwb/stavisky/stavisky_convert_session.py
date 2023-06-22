@@ -12,7 +12,6 @@ from stavisky_lab_to_nwb.stavisky import StaviskyNWBConverter
 
 
 def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub_test: bool = False):
-
     # Instantiate Redis client and check connection
     r = redis.Redis(port=port, host=host)
     r.ping()
@@ -80,7 +79,6 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
 
 if __name__ == "__main__":
-
     # Parameters for conversion
     port = 6379
     host = "localhost"
