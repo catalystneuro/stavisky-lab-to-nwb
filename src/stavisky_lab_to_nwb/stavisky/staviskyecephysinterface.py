@@ -1,11 +1,11 @@
-"""Primary class for converting experiment-specific behavior."""
-from pynwb.file import NWBFile
+"""Class for converting generic ecephys data."""
+from pynwb import NWBFile
 
 from neuroconv.basedatainterface import BaseDataInterface
 
 
-class SimulatedDataBehaviorInterface(BaseDataInterface):
-    """Behavior interface for simulated_data conversion"""
+class StaviskySpikingBandPowerInterface(BaseDataInterface):
+    """Spiking band power interface for Stavisky Redis conversion"""
 
     def __init__(self):
         # This should load the data lazily and prepare variables you need
@@ -17,7 +17,7 @@ class SimulatedDataBehaviorInterface(BaseDataInterface):
 
         return metadata
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict):
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict):
         # All the custom code to write to PyNWB
 
         return nwbfile
