@@ -6,6 +6,7 @@ from typing import Optional, Union, Literal
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools.nwb_helpers import get_module
+from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 class StaviskySpikingBandPowerInterface(BaseDataInterface):
     """Spiking band power interface for Stavisky Redis conversion"""
@@ -14,33 +15,43 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
         self,
         port: int,
         host: str,
-        start_time: Optional[float] = None,
-        timestamps: Optional[list] = None,
-        timestamp_source: Optional[str] = None,
+        timestamp_source: str = "redis",
         timestamp_encoding: Optional[str] = None,
         timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
-        timestamp_unit: Literal["s", "ms", "us"] = "ms",
+        timestamp_unit: Optional[str] = None, # Literal["s", "ms", "us"]
+        start_time: Optional[float] = None,
     ):
         super().__init__(port=port, host=host)
-        assert (timestamps is not None) or (timestamp_source is not None)
-        if timestamp_source is not None and timestamp_source != "redis":
-            assert (timestamp_encoding is not None) and (timestamp_dtype is not None)
+        if timestamp_source == "redis":
+            timestamp_unit = "ms"
+        else:
+            assert (timestamp_encoding is not None)
+            assert (timestamp_dtype is not None)
+            assert (timestamp_unit is not None)
             timestamp_source = bytes(timestamp_source, "utf-8")
         if timestamp_encoding is not None:
             assert timestamp_encoding in ["str", "buffer"]
-        self._start_time = start_time
-        self._timestamps = timestamps if timestamps is None else np.array(timestamps, dtype=np.float64)
         self._timestamp_source = timestamp_source
         self._timestamp_encoding = timestamp_encoding
         self._timestamp_dtype = timestamp_dtype
         self._timestamp_unit = timestamp_unit
+        self._start_time = start_time
+        self._recording = None
+        self._recording_frequency_ratio_1ms = None
             
-
     def get_metadata(self):
         # Automatically retrieve as much metadata as possible
         metadata = super().get_metadata()
         
         return metadata
+    
+    def register_recording(
+        self,
+        recording: BaseRecordingExtractorInterface,
+        frequency_ratio: int = 1,
+    ):
+        self._recording = recording
+        self._recording_frequency_ratio_1ms = frequency_ratio
 
     def add_to_nwbfile(
         self,
@@ -57,18 +68,19 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
         r.ping()
 
         # get processing module
-        module_name = "Processed ecephys"
+        module_name = "ecephys"
         module_description = "Contains processed ecephys data like spiking band power"
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
         
         # prepare timestamps if provided
-        build_timestamps = self._timestamps is None
+        build_timestamps = self._recording is None
         if build_timestamps:
             timestamps_1ms = []
             timestamps_20ms = []
         else:
-            timestamps_1ms = self._timestamps
-            timestamps_20ms = self._timestamps[::20]
+            base_timestamps = self._recording.recording_extractor.get_times() # assumes 1 segment
+            timestamps_1ms = base_timestamps[::self._recording_frequency_ratio_1ms]
+            timestamps_20ms = timestamps_1ms[:-19:20]
         
         # extract 1 ms data
         sbp_1ms = []
@@ -130,35 +142,44 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
             timestamps_20ms = np.array(timestamps_20ms)
         
         # TODO: use timestamp smoothing?
-        if self._timestamp_unit == "ms":
-            timestamps_1ms *= 1e-3
-            timestamps_20ms *= 1e-3
-        elif self._timestamp_unit == "us":
-            timestamps_1ms *= 1e-6
-            timestamps_20ms *= 1e-6
+        if build_timestamps:
+            if self._timestamp_unit == "ms":
+                timestamps_1ms *= 1e-3
+                timestamps_20ms *= 1e-3
+            elif self._timestamp_unit == "us":
+                timestamps_1ms *= 1e-6
+                timestamps_20ms *= 1e-6
         
-        start_time = self._start_time or timestamps_1ms[0]
-        timestamps_1ms -= start_time
-        timestamps_20ms -= start_time
+        # subtract start time if not using recording timestamps
+        if build_timestamps:
+            if self._timestamp_source == "redis":
+                start_time = np.frombuffer(r.xrange("metadata")[0][1][b"startTime"], dtype=np.float64).item()
+            elif self._start_time is None:
+                start_time = timestamps_1ms[0]
+            timestamps_1ms -= start_time
+            timestamps_20ms -= start_time
         
+        # create timeseries objs
         sbp_1ms_timeseries = TimeSeries(
             name="spiking_band_power_1ms",
             data=sbp_1ms,
-            unit="V^2/Hz", # does this work?
+            unit="V^2/Hz",
             timestamps=timestamps_1ms,
             description="Spiking band power in the 250 Hz to 5 kHz frequency range computed 1 kHz",
         )
         sbp_20ms_timeseries = TimeSeries(
             name="spiking_band_power_20ms",
             data=sbp_20ms,
-            unit="V^2/Hz", # does this work?
+            unit="V^2/Hz",
             timestamps=timestamps_20ms,
             description="Spiking band power in the 250 Hz to 5 kHz frequency range computed 1 kHz and re-binned to 50 Hz",
         )
         
+        # add to nwbfile
         processing_module.add_data_interface(sbp_1ms_timeseries)
         processing_module.add_data_interface(sbp_20ms_timeseries)
         
+        # close redis client
         r.close()
         
         return nwbfile

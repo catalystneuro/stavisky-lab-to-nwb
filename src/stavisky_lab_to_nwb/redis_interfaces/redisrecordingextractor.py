@@ -1,7 +1,7 @@
 """Redis recording extractor."""
 import redis
 import numpy as np
-from typing import Union, Optional, List, Tuple, Literal
+from typing import Union, Optional, Literal
 
 from spikeinterface.core import BaseRecording, BaseRecordingSegment
 from stavisky_lab_to_nwb.redis_interfaces.redisextractormixin import RedisExtractorMixin
@@ -14,14 +14,13 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         host: str,
         stream_name: str,
         data_key: Union[bytes, str],
-        channel_count: int,
         dtype: Union[str, type, np.dtype],
+        channel_count: int,
         channel_ids: Optional[list] = None,
         frames_per_entry: int = 1,
-        timestamps: Optional[list] = None,
         start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
-        timestamp_source: Union[bytes, str] = "redis",
+        timestamp_source: Optional[Union[bytes, str]] = None,
         timestamp_kwargs: dict = {},
         gain_to_uv: Optional[float] = None,
         channel_dim: int = 0,
@@ -37,26 +36,16 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         if channel_ids is None:
             channel_ids = np.arange(channel_count, dtype=int).tolist()
         
-        # timestamp kwargs
-        default_ts_kwargs = { # TODO: is this a good way to do things?
-            "timestamp_unit": "ms",
-            "chunk_size": 1000,
-            "smoothing_window": 30000,
-            "smoothing_stride": 1,
-        }
-        default_ts_kwargs.update(timestamp_kwargs)
-        
         # get entry IDs and timestamps
         stream_len = self._client.xlen(stream_name)
         assert stream_len > 0, "Stream has length 0"
         start_time, sampling_frequency, timestamps, entry_ids = self.get_ids_and_timestamps(
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
-            timestamps=timestamps,
-            timestamp_source=timestamp_source,
             start_time=start_time,
             sampling_frequency=sampling_frequency,
-            **default_ts_kwargs
+            timestamp_source=timestamp_source,
+            **timestamp_kwargs
         )
         
         # Initialize Recording and RecordingSegment
@@ -66,13 +55,12 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
             client=self._client,
             stream_name=stream_name,
             data_key=data_key,
-            channel_count=channel_count,
             dtype=dtype,
-            frames_per_entry=frames_per_entry,
-            start_time=start_time,
-            # sampling_frequency=sampling_frequency,
+            channel_count=channel_count,
             timestamps=timestamps,
             entry_ids=entry_ids,
+            frames_per_entry=frames_per_entry,
+            t_start=0, # t_start != start_time
             channel_dim=channel_dim,
         )
         self.add_recording_segment(recording_segment)
@@ -101,17 +89,16 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         client: redis.Redis,
         stream_name: str,
         data_key: Union[bytes, str],
-        channel_count: int,
         dtype: Union[str, type, np.dtype],
+        channel_count: int,
         timestamps: np.ndarray,
         entry_ids: list[bytes],
         frames_per_entry: int = 1,
-        start_time: Optional[float] = None,
-        # sampling_frequency: Optional[float] = None,
+        t_start: Optional[float] = None,
         channel_dim: int = 0, # TODO: confusing name?
     ):        
         # initialize base class
-        BaseRecordingSegment.__init__(self, time_vector=timestamps, t_start=start_time)
+        BaseRecordingSegment.__init__(self, time_vector=timestamps, t_start=t_start)
         
         # Assign Redis client and check connection
         self._client = client
@@ -136,9 +123,9 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         
     def get_traces(
         self,
-        start_frame: Union[int, None] = None,
-        end_frame: Union[int, None] = None,
-        channel_indices: Union[List, None] = None,
+        start_frame: Optional[int] = None,
+        end_frame: Optional[int] = None,
+        channel_indices: Optional[list] = None,
     ) -> np.ndarray:
         # handle None args
         if start_frame is None:
@@ -153,8 +140,8 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         # convert to entry number and within-entry idx
         start_entry_idx = start_frame // self._frames_per_entry
         start_frame_idx = start_frame % self._frames_per_entry
-        end_entry_idx = (end_frame - 1) // self._frames_per_entry
-        end_frame_idx = (end_frame - 1) % self._frames_per_entry
+        end_entry_idx = (end_frame - 1) // self._frames_per_entry # inclusive
+        end_frame_idx = (end_frame - 1) % self._frames_per_entry # inclusive
         
         # read needed entries
         stream_entries = self._client.xrange(
@@ -175,6 +162,8 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
                     entry_data = entry_data.reshape((self._frames_per_entry, self._channel_count))
             else:
                 entry_data = entry_data[None, :]
+            if channel_indices is not None:
+                entry_data = entry_data[:, channel_indices]
             traces.append(entry_data)
         traces = np.concatenate(traces, axis=0)
         
@@ -184,7 +173,5 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
             traces = traces[start_frame_idx:]
         if end_frame_idx < (self._frames_per_entry - 1):
             traces = traces[:(end_frame_idx + 1 - self._frames_per_entry)]
-        if channel_indices is not None:
-            traces = traces[:, channel_indices]
         
         return traces

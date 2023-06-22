@@ -8,11 +8,14 @@ from neuroconv.utils import DeepDict
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
 
-from stavisky_lab_to_nwb.redis_interfaces.redissortinginterface import RedisSortingInterface
+from stavisky_lab_to_nwb.redis_interfaces.redissortingextractor import RedisStreamSortingExtractor
 
 
-class StaviskySortingInterface(RedisSortingInterface):
+class RedisSortingInterface(BaseSortingExtractorInterface):
     """Sorting interface for Stavisky Redis conversion"""
+    
+    ExtractorModuleName = "stavisky_lab_to_nwb.redis_interfaces.redissortingextractor"
+    ExtractorName = "RedisStreamSortingExtractor"
     
     def __init__(
         self,
@@ -47,10 +50,13 @@ class StaviskySortingInterface(RedisSortingInterface):
             timestamp_kwargs=timestamp_kwargs,
             unit_dim=unit_dim,
         )
+    
+    def register_recording(self, recording_interface: BaseRecordingExtractorInterface, **kwargs):
+        self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor, **kwargs)
 
         
 if __name__ == "__main__":
-    extractor = StaviskySortingInterface(
+    extractor = RedisStreamSortingExtractor(
         port=6379,
         host="localhost",
         stream_name="neuralFeatures_1ms",

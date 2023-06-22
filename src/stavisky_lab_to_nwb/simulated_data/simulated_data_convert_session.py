@@ -28,6 +28,9 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     
     session_id = rdb_metadata[b'session_name'].decode('UTF-8')
     nwbfile_path = output_dir_path / f"{session_id}.nwb"
+    
+    # get session start time
+    start_time = np.frombuffer(rdb_metadata[b'startTime'], dtype=np.float64).item()
 
     # Configure conversion
     source_data = dict()
@@ -37,8 +40,8 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     source_data.update(dict(Recording=dict(
         port=port, host=host, stream_name="continuousNeural", data_key="samples",
         channel_count=256, dtype="int16", frames_per_entry=30, gain_to_uv=100, 
-        timestamp_source="redis", timestamp_kwargs=dict(
-            chunk_size=10000, timestamp_unit="ms", smoothing_window=13741620*2), 
+        start_time=start_time, timestamp_source="redis", timestamp_kwargs=dict(
+            chunk_size=10000, timestamp_unit="ms", smoothing_window="max"), 
         channel_dim=1,
     )))
     conversion_options.update(dict(Recording=dict()))
@@ -46,9 +49,9 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     # Add Sorting
     source_data.update(dict(Sorting=dict(
         port=port, host=host, stream_name="neuralFeatures_1ms", data_key="threshold_crossings",
-        unit_count=256, dtype="int16", recording_frequency_ratio=30,
-        timestamp_source="redis", timestamp_kwargs=dict(
-            chunk_size=10000, timestamp_unit="ms", smoothing_window=458054*2),
+        dtype="int16", unit_count=256, frames_per_entry=1,
+        start_time=start_time, timestamp_source="redis", timestamp_kwargs=dict(
+            chunk_size=10000, timestamp_unit="ms", smoothing_window="max"),
     )))
     conversion_options.update(dict(Sorting=dict()))
     
@@ -65,10 +68,8 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    date = datetime.datetime.fromtimestamp(np.frombuffer(
-            rdb_metadata[b'startTime'],
-            dtype=np.float64).item()).replace(tzinfo=ZoneInfo("US/Pacific"))
-    metadata["NWBFile"]["session_start_time"] = date
+    metadata["NWBFile"]["session_start_time"] = datetime.datetime.fromtimestamp(
+        start_time).replace(tzinfo=ZoneInfo("US/Pacific"))
     
     # Add subject ID
     subject = rdb_metadata[b'participant'].decode('UTF-8')
@@ -80,6 +81,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
         f"Block {rdb_metadata[b'block_num'].decode('UTF-8').strip()}: " + \
         f"{rdb_metadata[b'block_description'].decode('UTF-8').strip()}"
     metadata["NWBFile"]["session_description"] = session_description
+    metadata["NWBFile"]["experiment_description"] = "Real-time BCI speech decoding"
     
     # Close Redis client
     r.close()

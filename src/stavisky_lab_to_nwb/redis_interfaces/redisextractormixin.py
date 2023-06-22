@@ -17,38 +17,39 @@ class RedisExtractorMixin:
     def get_ids_and_timestamps(
         self,
         stream_name: str,
-        timestamp_unit: Literal["s", "ms", "us"],
         frames_per_entry: int = 1,
-        timestamps: Optional[list] = None,
         start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
-        timestamp_source: Optional[str] = None,
+        timestamp_source: Optional[Union[bytes, str]] = None,
+        timestamp_unit: Optional[Literal["s", "ms", "us"]] = None,
         timestamp_encoding: Optional[Literal["str", "buffer"]] = None,
         timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
-        chunk_size: int = 10,
-        smoothing_window: int = 1,
+        chunk_size: int = 1000,
+        smoothing_window: Union[int, Literal["max"]] = 1,
         smoothing_stride: int = 1,
         smoothing_causal_check: bool = False,
     ):
         # get stream len
         num_entries = self._client.xlen(stream_name)
         
-        # get timestamps if already available/calculable
-        if timestamps is not None:
-            assert timestamps.ndim == 1
-            assert len(timestamps) == num_entries * frames_per_entry
-            timestamps = np.array(timestamps, dtype=np.float64)
-        elif (start_time is not None) and (sampling_frequency is not None):
+        # get timestamps if already calculable
+        if (start_time is not None) and (sampling_frequency is not None):
             timestamps = np.arange(num_entries * frames_per_entry, dtype=np.float64) / sampling_frequency
+            build_timestamps = False
+        else:
+            build_timestamps = True
         
         # check args initialize buffer if timestamps need to be loaded
-        build_timestamps = timestamps is None
         if build_timestamps:
             assert (timestamp_source is not None)
-            if safe_decode(timestamp_source) != "redis": 
-                assert (timestamp_encoding is not None) and (timestamp_dtype is not None)
-            elif not isinstance(timestamp_source, bytes):
-                timestamp_source = bytes(timestamp_source, "utf-8")
+            if safe_decode(timestamp_source).lower() == "redis": 
+                timestamp_unit = "ms"
+            else:
+                assert (timestamp_encoding is not None)
+                assert (timestamp_dtype is not None)
+                assert (timestamp_unit is not None)
+                if not isinstance(timestamp_source, bytes):
+                    timestamp_source = bytes(timestamp_source, "utf-8")
             timestamps = np.full((num_entries * frames_per_entry,), np.nan, dtype=np.float64)
         timestamp_dtype = np.dtype(timestamp_dtype)
         
@@ -112,7 +113,7 @@ class RedisExtractorMixin:
             timestamps *= 1e-6
         
         # "smooth" timestamps if desired
-        if smoothing_window > 1:
+        if smoothing_window != 1:
             timestamps = RedisExtractorMixin.smooth_timestamps(
                 timestamps=timestamps,
                 frames_per_entry=frames_per_entry,
@@ -139,13 +140,17 @@ class RedisExtractorMixin:
     def smooth_timestamps(
         timestamps: np.ndarray,
         frames_per_entry: int,
-        window_len: int = 1,
+        window_len: Union[int, Literal["max"]] = 1,
         stride_len: int = 1,
         causal_check: bool = False,
     ):
         # no smoothing if window_len of 1
         if window_len == 1:
             return timestamps
+        elif window_len == "max":
+            window_len = (len(timestamps) - frames_per_entry) * 2
+        else:
+            assert window_len > 1, '`window_len` must be either "max" or an integer >= 1'
         
         # take diffs
         ts_diff = np.diff(timestamps)
@@ -166,11 +171,11 @@ class RedisExtractorMixin:
         
         # perform convolution
         smoothed_diff = ssignal.convolve(
-            ts_diff_padded, # [:, None],
-            kernel, # [:, None],
+            ts_diff_padded,
+            kernel,
             mode="valid",
         ).squeeze()
-        assert len(smoothed_diff) == len(ts_diff)
+        assert len(smoothed_diff) == len(ts_diff) # sanity check sufficient padding
         
         # get strided values if desired
         # TODO: make more efficient? tons of unused computations in full convolve

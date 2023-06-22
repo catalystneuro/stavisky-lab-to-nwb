@@ -6,11 +6,14 @@ from typing import Union, Optional, List, Tuple, Literal
 
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
 
-from stavisky_lab_to_nwb.redis_interfaces.redisrecordinginterface import RedisRecordingInterface
+from stavisky_lab_to_nwb.redis_interfaces.redisrecordingextractor import RedisStreamRecordingExtractor
 
 
-class StaviskyRecordingInterface(RedisRecordingInterface):
+class RedisRecordingInterface(BaseRecordingExtractorInterface):
     """Recording interface for Stavisky Redis conversion"""
+    
+    ExtractorModuleName = "stavisky_lab_to_nwb.redis_interfaces.redisrecordingextractor"
+    ExtractorName = "RedisStreamRecordingExtractor"
 
     def __init__(
         self,
@@ -49,29 +52,7 @@ class StaviskyRecordingInterface(RedisRecordingInterface):
             gain_to_uv=gain_to_uv,
             channel_dim=channel_dim,
         )
-    
-    def get_metadata(self) -> dict:
-        metadata = super().get_metadata()
-        
-        # TODO: actually get array count, electrode count from Redis
-        # Add electrode/device info
-        devices = ["Array0", "Array1", "Array2", "Array3"]
-        channel_groups = ["ElectrodeGroup0", "ElectrodeGroup1", "ElectrodeGroup2", "ElectrodeGroup3"]
-        device_locations = ["unknown", "unknown", "unknown", "unknown"]
-        device_metadata = [
-                dict(name=device, description=f"Utah array {device}") 
-                for device in devices
-            ]
-        electrode_group_metadata = [
-            dict(name=str(group_id), description=f"Electrodes from {device}", location=location, device=device)
-            for device, location, group_id in zip(devices, device_locations, channel_groups)
-        ]
-        metadata["Ecephys"].update(dict(
-            Device=device_metadata,
-            ElectrodeGroup=electrode_group_metadata,
-        ))
 
-        return metadata
 
 if __name__ == "__main__":
     extractor = RedisStreamRecordingExtractor(
