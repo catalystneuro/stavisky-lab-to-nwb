@@ -1,4 +1,4 @@
-# from .staviskybehaviorinterface import StaviskyPhonemeLogitsInterface, StaviskyDecodedTextInterface
+from .staviskydecodinginterface import StaviskyPhonemeLogitsInterface, StaviskyDecodedTextInterface
 # from .staviskyecephysinterface import StaviskySpikingBandPowerInterface
 # from .staviskysortinginterface import RedisSortingInterface
 # from .staviskyrecordinginterface import RedisRecordingInterface
