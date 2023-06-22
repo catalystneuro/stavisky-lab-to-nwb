@@ -76,13 +76,13 @@ Here is an overview of each data stream in the RDB file: *(bold question marks m
   - **????** `"delay"` - int indicating some sort of delay, but not sure what delay? Potentially in milliseconds? Ex: 3580
   - **????** `"interTrialSleep"` - intertrial interval between current and next trial (or previous and current trial)? in milliseconds? Ex: 2000
   - `"sentenceCue"` - text sentence used as audio input/decoding target for the trial
-- `"binned:decoderOutput:stream"` - List of length 5750. Output of brain-to-text decoder. Entries follow the pattern \[start, logits, decoded sentence so far, logits, decoded sentence so far, ... , logits, final decoded sentence, start, logits ...\]. 
+- `"binned:decoderOutput:stream"` - List of length 5750. Output of brain-to-text decoder. Entries follow the pattern \[start, logits, decoded sentence so far, logits, decoded sentence so far, ... , logits, final decoded sentence, start, logits ...\].
   - start dict - has one key, `"start"`, which maps to corresponding entry ID which is unix timestamp. Ex: `b'1677021306179-0'`
   - **????** logits dict - has one key, `"logits"`, which maps to 164-byte sequence. Assuming float32 dtype, this suggests a vocabulary of 41 words? Unsure how to make sense of this.
   - decoded sentence dict - has one key, either `"partial_decoded_sentence"` or `"final_decoded_sentence"`, mapping to text decoded so far. Ex: `b' my family is very need'`
 - `"binnedFeatures_20ms"` - List of length 22902. Binned neural features (threshold crossings and spike power, 20 ms bins). These aren’t z-scored yet. Keys:
   - **????** `"threshold_crossings_bin"` - sequence of 512 bytes. Possibly 2 bytes per channel, (u)int16?
-  - **????** `"spike_band_power_bin"` - sequence of 1024 bytes, so likely 4 bytes per channel. Unsure of format, float 32 maybe? 
+  - **????** `"spike_band_power_bin"` - sequence of 1024 bytes, so likely 4 bytes per channel. Unsure of format, float 32 maybe?
   - **????** `"input_id"` - 160-byte sequence. Appears to be int64, list of 20 indices probably corresponding to `"neuralFeatures_1ms"` included.
   - **????** `"tracking_id"` - 8-byte sequence. Appears to be int64, \[19, 39, ...\]. Corresponds to `"neuralFeatures_1ms"` probably
   - **????** `"BRAND_time"` - 8 bytes, unknown format. Ex: `b'\x1b\x06\x0e-w\x0b\x00\x00'`
@@ -102,7 +102,7 @@ Here is an overview of each data stream in the RDB file: *(bold question marks m
 - `"graph_status"` - List of length 9. Status of graph (e.g. initialized, running, etc.). Doesn't seem particularly useful
 - `"threshold_values1"` - List of length 458055 (so ~1 kHz?). Spikes simulated at 30 kHz from model-generated firing rates. Keys:
   - **????** `"ts_start"` - string timestamp. Ex: `b'12601.696126469'`
-  - **????** `"ts_in"` - string timestamp, same format as above. Not sure what it means. 
+  - **????** `"ts_in"` - string timestamp, same format as above. Not sure what it means.
   - **????** `"ts"` - another string timestamp, same format as above.
   - **????** `"ts_end"` - another string timestamp.
   - `"i"` - string of int, index in list.
@@ -117,7 +117,7 @@ Here is an overview of each data stream in the RDB file: *(bold question marks m
   - **????** `"timestamps"` - 16 bytes. Not sure how to read, but from a quick search on UDP it seems that the data is streamed separately? So no actual neural data stored in RDB?
 - `"neuralFeatures_1ms"` - List of length 458055 (so ~1 kHz?). 1 ms binned neural features (like `"binnedFeatures_20ms"`). Keys:
   - `"threshold_crossings"` - sequence of 512 bytes. Possibly 2 bytes per channel, (u)int16?
-  - `"spike_band_power"` - sequence of 1024 bytes, so likely 4 bytes per channel. Unsure of format, float32 maybe? 
+  - `"spike_band_power"` - sequence of 1024 bytes, so likely 4 bytes per channel. Unsure of format, float32 maybe?
   - **????** `"nsp_timestamps"` - 240-byte sequence. Appears to be int64, simply indices (at 30 kHz) starting from 1.
   - `"tracking_id"` - 8-byte sequence. Appears to be int64, indices starting from 1 (at 1 kHz)
   - `"BRAND_time"` - 8 bytes, unknown format. ??
