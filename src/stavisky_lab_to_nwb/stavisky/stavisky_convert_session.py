@@ -39,6 +39,10 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     # Add Sorting
     # source_data.update(dict(Sorting=dict()))
     # conversion_options.update(dict(Sorting=dict()))
+    
+    # Add SpikingBandPower
+    source_data.update(dict(SpikingBandPower=dict(port=port, host=host)))
+    conversion_options.update(dict(SpikingBandPower=dict(stub_test=stub_test, smooth_timestamps=True)))
 
     # Add Trials
     source_data.update(dict(Trials=dict(port=port, host=host)))
@@ -82,7 +86,7 @@ if __name__ == "__main__":
     # Parameters for conversion
     port = 6379
     host = "localhost"
-    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/simulated_data/").expanduser()
+    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_sbp/").expanduser()
     stub_test = False
 
     session_to_nwb(
