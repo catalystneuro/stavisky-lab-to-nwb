@@ -51,8 +51,8 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
                 trial_logits = []
             elif b"end" in entry[1].keys():  # end of trial decoding period
                 if smooth_timestamps:  # interpolate timestamps to be regular, if desired
-                    start_time = int(trial_logits[0][0].split(b"-")[0]) / 1000. - session_start_time
-                    stop_time = int(trial_logits[-1][0].split(b"-")[0]) / 1000. - session_start_time
+                    start_time = int(trial_logits[0][0].split(b"-")[0]) / 1000.0 - session_start_time
+                    stop_time = int(trial_logits[-1][0].split(b"-")[0]) / 1000.0 - session_start_time
                     trial_timestamps = np.linspace(start_time, stop_time, len(trial_logits - 2))
                 else:
                     trial_timestamps = np.array(
@@ -159,7 +159,7 @@ class StaviskyDecodedTextInterface(BaseDataInterface):
 
         # add to processing module
         processing_module.add_data_interface(events)
-        
+
         # close redis client
         r.close()
 
