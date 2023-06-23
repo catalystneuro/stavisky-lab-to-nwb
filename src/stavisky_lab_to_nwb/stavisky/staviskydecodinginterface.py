@@ -51,8 +51,8 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
                 trial_logits = []
             elif b"end" in entry[1].keys():  # end of trial decoding period
                 if smooth_timestamps:  # interpolate timestamps to be regular, if desired
-                    start_time = int(trial_logits[0][0].split(b"-")[0]) / 1000.0 - session_start_time
-                    stop_time = int(trial_logits[-1][0].split(b"-")[0]) / 1000 - session_start_time
+                    start_time = int(trial_logits[0][0].split(b"-")[0]) / 1000. - session_start_time
+                    stop_time = int(trial_logits[-1][0].split(b"-")[0]) / 1000. - session_start_time
                     trial_timestamps = np.linspace(start_time, stop_time, len(trial_logits - 2))
                 else:
                     trial_timestamps = np.array(
@@ -78,6 +78,8 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
             timestamps=timestamps,
             description="Log-probabilities of the 39 phonemes plus silence and space between words, as "
             + "predicted by an RNN decoder",
+            comments="The 41 columns correspond to, in order, silence, the space between words, and "
+            + "the 39 phonemes of the CMU pronouncing dictionary in alphabetical order",
         )
 
         # add to processing module
@@ -149,14 +151,16 @@ class StaviskyDecodedTextInterface(BaseDataInterface):
         # make labeledevents obj
         events = LabeledEvents(
             name="decoded_text",
-            description="Text decoded from neural activity using language model",
+            description="Text decoded from RNN-predicted phonemes using language model",
             timestamps=decoded_timestamps,
-            resolution=12.5e-3,  # running at 80 Hz (supposedly)
             data=decoded_text_idx,
             labels=output_set,
         )
 
         # add to processing module
         processing_module.add_data_interface(events)
+        
+        # close redis client
+        r.close()
 
         return nwbfile
