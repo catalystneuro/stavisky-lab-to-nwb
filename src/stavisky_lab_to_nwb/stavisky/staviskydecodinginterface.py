@@ -4,6 +4,7 @@ import numpy as np
 from pynwb import NWBFile, TimeSeries
 from ndx_events import LabeledEvents
 from typing import Optional
+from hdmf.backends.hdf5 import H5DataIO
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools.nwb_helpers import get_module
@@ -33,13 +34,12 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
         r.ping()
 
         # get processing module
-        module_name = "decoding"
+        module_name = "behavior"
         module_description = "Contains decoder outputs for real-time speech decoding."
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
 
         # get reference time for timestamps
-        # session_start_time = metadata["NWBFile"]["session_start_time"].timestamp()
-        session_start_time = np.frombuffer(r.xrange("metadata")[0][1][b"startTime"], dtype=np.float64).item()
+        session_start_time = metadata["NWBFile"]["session_start_time"].timestamp()
 
         # loop through data and make arrays
         decoder_output = r.xrange("binned:decoderOutput:stream")  # TODO: read in chunks?
@@ -73,9 +73,9 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
         # create timeseries obj
         logits_timeseries = TimeSeries(
             name="phoneme_logits",
-            data=logits,
+            data=H5DataIO(logits, compression="gzip"),
             unit="n.a.",
-            timestamps=timestamps,
+            timestamps=H5DataIO(timestamps, compression="gzip"),
             description=(
                 "Log-probabilities of the 39 phonemes plus silence and space between words, as "
                 "predicted by an RNN decoder"
@@ -119,13 +119,12 @@ class StaviskyDecodedTextInterface(BaseDataInterface):
         r.ping()
 
         # get processing module
-        module_name = "decoding"
-        module_description = "Contains decoder outputs for real-time speech decoding"
+        module_name = "behavior"
+        module_description = "Contains decoder outputs for real-time speech decoding."
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
 
         # get reference time for timestamps
-        # session_start_time = metadata["NWBFile"]["session_start_time"].timestamp()
-        session_start_time = np.frombuffer(r.xrange("metadata")[0][1][b"startTime"], dtype=np.float64).item()
+        session_start_time = metadata["NWBFile"]["session_start_time"].timestamp()
 
         # loop through data and log decoder output
         decoder_output = r.xrange("binned:decoderOutput:stream")
@@ -151,13 +150,20 @@ class StaviskyDecodedTextInterface(BaseDataInterface):
         # get unique decoder outputs
         output_set = sorted(list(set(decoded_text)))
         decoded_text_idx = [output_set.index(sentence) for sentence in decoded_text]
+        
+        # cast to lower int dtype if possible
+        if np.max(decoded_text_idx) < 65536:
+            decoded_text_idx = np.array(decoded_text_idx, dtype='uint16')
+        else:
+            # can't imagine it'll exceed 4294967295
+            decoded_text_idx = np.array(decoded_text_idx, dtype='uint32')
 
         # make labeledevents obj
         events = LabeledEvents(
             name="decoded_text",
             description="Text decoded from RNN-predicted phonemes using language model.",
-            timestamps=decoded_timestamps,
-            data=decoded_text_idx,
+            timestamps=H5DataIO(decoded_timestamps, compression="gzip"),
+            data=H5DataIO(decoded_text_idx, compression="gzip"),
             labels=output_set,
         )
 

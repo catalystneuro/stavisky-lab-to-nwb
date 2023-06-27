@@ -54,9 +54,9 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    date = datetime.datetime.fromtimestamp(np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()).replace(
-        tzinfo=ZoneInfo("US/Pacific")
-    )
+    date = datetime.datetime.fromtimestamp(
+        np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()
+    ).astimezone(tz=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
 
     # Add subject ID
