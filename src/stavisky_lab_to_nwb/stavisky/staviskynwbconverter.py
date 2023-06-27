@@ -6,7 +6,7 @@ from stavisky_lab_to_nwb.stavisky import (
     # StaviskyDecodedTextInterface,
     # StaviskySpikingBandPowerInterface,
     # RedisSortingInterface,
-    # RedisRecordingInterface,
+    StaviskyRecordingInterface,
     StaviskyTrialsInterface,
 )
 
@@ -15,7 +15,7 @@ class StaviskyNWBConverter(NWBConverter):
     """Primary conversion class for my extracellular electrophysiology dataset."""
 
     data_interface_classes = dict(
-        # Recording=RedisRecordingInterface,
+        Recording=StaviskyRecordingInterface,
         # Sorting=RedisSortingInterface,
         Trials=StaviskyTrialsInterface,
     )

@@ -170,8 +170,14 @@ class RedisExtractorMixin:
                                 )
                         assert np.all(entry_timestamps > last_ts) # sanity check for monotonic increasing ts
                         last_ts = entry_timestamps[-1]
+                    # convert to seconds and subtract start time
+                    if timestamp_unit == "ms":
+                        entry_timestamps *= 1e-3
+                    elif timestamp_unit == "us":
+                        entry_timestamps *= 1e-6
+                    entry_timestamps -= (start_time or 0.)
                     # add timestamps to array
-                    timestamps[(count*frames_per_entry):((count+1)*frames_per_entry)] = entry_timestamps - (start_time or 0.)
+                    timestamps[(count*frames_per_entry):((count+1)*frames_per_entry)] = entry_timestamps
                     count += 1
             
             # read next entries
@@ -188,13 +194,6 @@ class RedisExtractorMixin:
         if start_time is None:
             start_time = timestamps[0]
             timestamps -= start_time
-        
-        # convert to seconds
-        if build_timestamps:
-            if timestamp_unit == "ms":
-                timestamps *= 1e-3
-            elif timestamp_unit == "us":
-                timestamps *= 1e-6
         
         # "smooth" timestamps if desired and 
         if build_timestamps:
