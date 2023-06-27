@@ -34,7 +34,7 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
 
         # get processing module
         module_name = "decoding"
-        module_description = "Contains decoder outputs for real-time speech decoding"
+        module_description = "Contains decoder outputs for real-time speech decoding."
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
 
         # get reference time for timestamps
@@ -76,10 +76,14 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
             data=logits,
             unit="n.a.",
             timestamps=timestamps,
-            description="Log-probabilities of the 39 phonemes plus silence and space between words, as "
-            + "predicted by an RNN decoder",
-            comments="The 41 columns correspond to, in order, silence, the space between words, and "
-            + "the 39 phonemes of the CMU pronouncing dictionary in alphabetical order",
+            description=(
+                "Log-probabilities of the 39 phonemes plus silence and space between words, as "
+                "predicted by an RNN decoder"
+            ),
+            comments=(
+                "The 41 columns correspond to, in order, silence, the space between words, and "
+                "the 39 phonemes of the CMU pronouncing dictionary in alphabetical order"
+            ),
         )
 
         # add to processing module
@@ -151,7 +155,7 @@ class StaviskyDecodedTextInterface(BaseDataInterface):
         # make labeledevents obj
         events = LabeledEvents(
             name="decoded_text",
-            description="Text decoded from RNN-predicted phonemes using language model",
+            description="Text decoded from RNN-predicted phonemes using language model.",
             timestamps=decoded_timestamps,
             data=decoded_text_idx,
             labels=output_set,
