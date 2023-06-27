@@ -49,41 +49,40 @@ class StaviskyRecordingInterface(RedisStreamRecordingInterface):
             gain_to_uv=gain_to_uv,
             channel_dim=channel_dim,
         )
-        
+
         # connect to Redis
         r = redis.Redis(
             port=self.source_data["port"],
             host=self.source_data["host"],
         )
         r.ping()
-        
+
         # get data if possible
         data = json.loads(r.xrange("supergraph_stream")[0][1][b"data"])
-        params = data['nodes']['featureExtraction']['parameters']
-        self.n_arrays = params.get('n_arrays', None)
-        self.n_electrodes_per_array = params.get('n_electrodes_per_array', None)
-        r.close()     
-    
-    def get_metadata(self) -> dict:                
+        params = data["nodes"]["featureExtraction"]["parameters"]
+        self.n_arrays = params.get("n_arrays", None)
+        self.n_electrodes_per_array = params.get("n_electrodes_per_array", None)
+        r.close()
+
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
-        
+
         # Add electrode/device info
         if self.n_arrays is not None:
             devices = [f"Array{i}" for i in range(1, self.n_arrays + 1)]
             device_locations = ["unknown"] * len(devices)
-            device_metadata = [
-                dict(name=device, description=f"Utah array {device}") 
-                for device in devices
-            ]
+            device_metadata = [dict(name=device, description=f"Utah array {device}") for device in devices]
             channel_groups = [f"Group{i}" for i in range(1, self.n_arrays + 1)]
             electrode_group_metadata = [
                 dict(name=str(group_id), description=f"Electrodes from {device}", location=location, device=device)
                 for device, location, group_id in zip(devices, device_locations, channel_groups)
             ]
-            metadata["Ecephys"].update(dict(
-                Device=device_metadata,
-                ElectrodeGroup=electrode_group_metadata,
-            ))
+            metadata["Ecephys"].update(
+                dict(
+                    Device=device_metadata,
+                    ElectrodeGroup=electrode_group_metadata,
+                )
+            )
 
         return metadata
 
@@ -105,7 +104,7 @@ class StaviskyRecordingInterface(RedisStreamRecordingInterface):
             channel_groups = np.repeat(np.arange(self.n_arrays), self.n_electrodes_per_array)
             channel_group_names = [f"Group{i}" for i in (channel_groups + 1)]
         self.recording_extractor.set_channel_groups(channel_group_names)
-        
+
         super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
@@ -118,4 +117,3 @@ class StaviskyRecordingInterface(RedisStreamRecordingInterface):
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
         )
-        

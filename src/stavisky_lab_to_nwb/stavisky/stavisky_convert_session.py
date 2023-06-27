@@ -32,15 +32,26 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     # Configure conversion
     source_data = dict()
     conversion_options = dict()
-    
+
     # Add Recording
-    source_data.update(dict(Recording=dict(
-        port=port, host=host, stream_name="continuousNeural", data_key="samples",
-        dtype="int16", channel_count=256, frames_per_entry=30, start_time=start_time,
-        timestamp_source="redis", timestamp_kwargs={
-            "smoothing_window": "max", "chunk_size": 50000
-        }, gain_to_uv=100., channel_dim=1,
-    )))
+    source_data.update(
+        dict(
+            Recording=dict(
+                port=port,
+                host=host,
+                stream_name="continuousNeural",
+                data_key="samples",
+                dtype="int16",
+                channel_count=256,
+                frames_per_entry=30,
+                start_time=start_time,
+                timestamp_source="redis",
+                timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
+                gain_to_uv=100.0,
+                channel_dim=1,
+            )
+        )
+    )
     conversion_options.update(dict(Recording=dict()))
 
     # Add Sorting
@@ -55,9 +66,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    date = datetime.datetime.fromtimestamp(start_time).replace(
-        tzinfo=ZoneInfo("US/Pacific")
-    )
+    date = datetime.datetime.fromtimestamp(start_time).replace(tzinfo=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
 
     # Add subject ID

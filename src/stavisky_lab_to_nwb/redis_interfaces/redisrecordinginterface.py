@@ -11,7 +11,7 @@ from stavisky_lab_to_nwb.redis_interfaces.redisrecordingextractor import RedisSt
 
 class RedisStreamRecordingInterface(BaseRecordingExtractorInterface):
     """Recording interface for Redis stream data"""
-    
+
     ExtractorModuleName = "stavisky_lab_to_nwb.redis_interfaces.redisrecordingextractor"
     ExtractorName = "RedisStreamRecordingExtractor"
 
@@ -52,4 +52,3 @@ class RedisStreamRecordingInterface(BaseRecordingExtractorInterface):
             gain_to_uv=gain_to_uv,
             channel_dim=channel_dim,
         )
-

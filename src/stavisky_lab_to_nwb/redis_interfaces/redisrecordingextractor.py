@@ -9,9 +9,9 @@ from stavisky_lab_to_nwb.redis_interfaces.redisextractormixin import RedisExtrac
 
 class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
     """Recording extractor for recording data stored in Redis stream"""
-    
+
     def __init__(
-        self, 
+        self,
         port: int,
         host: str,
         stream_name: str,
@@ -28,7 +28,7 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         channel_dim: int = 0,
     ):
         """Initialize the RedisStreamRecordingExtractor
-        
+
         Parameters
         ----------
         port : int
@@ -57,12 +57,12 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
             The sampling frequency of the data in Hz. See
             `RedisExtractorMixin`
         timestamp_source : bytes or str, optional
-            The source of the timestamp information in the Redis 
+            The source of the timestamp information in the Redis
             stream. See `RedisExtractorMixin`
         timestamp_kwargs : dict, default: {}
             If timestamp source is not "redis", then timestamp_kwargs
             must contain the unit, dtype, and encoding of the timestamp
-            data, and optionally smoothing parameters. See 
+            data, and optionally smoothing parameters. See
             `RedisExtractorMixin`
         gain_to_uv : float, optional
             Scaling necessary to convert the recording values to
@@ -70,9 +70,9 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         channel_dim : int, default: 0
             If frames_per_entry > 1, then channel_dim indicates the
             axis ordering of the data in each entry. If channel_dim
-            = 0, then the data is assumed to originally be of shape 
+            = 0, then the data is assumed to originally be of shape
             (channel_count, frames_per_entry). If channel_dim = 1,
-            then the data is assumed to originally be of shape 
+            then the data is assumed to originally be of shape
             (frames_per_entry, channel_count)
         """
         # Instantiate Redis client and check connection
@@ -81,11 +81,11 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
             host=host,
         )
         self._client.ping()
-        
+
         # Construct channel IDs if not provided
         if channel_ids is None:
             channel_ids = np.arange(channel_count, dtype=int).tolist()
-        
+
         # get entry IDs and timestamps
         stream_len = self._client.xlen(stream_name)
         assert stream_len > 0, "Stream has length 0"
@@ -95,9 +95,9 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
             start_time=start_time,
             sampling_frequency=sampling_frequency,
             timestamp_source=timestamp_source,
-            **timestamp_kwargs
+            **timestamp_kwargs,
         )
-        
+
         # Initialize Recording and RecordingSegment
         # NOTE: does not support multiple segments, assumes continuous recording for whole stream
         BaseRecording.__init__(self, channel_ids=channel_ids, sampling_frequency=sampling_frequency, dtype=dtype)
@@ -110,15 +110,15 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
             timestamps=timestamps,
             entry_ids=entry_ids,
             frames_per_entry=frames_per_entry,
-            t_start=0, # t_start != start_time
+            t_start=0,  # t_start != start_time
             channel_dim=channel_dim,
         )
         self.add_recording_segment(recording_segment)
-        
+
         # Set gains if provided
         if gain_to_uv is not None:
             self.set_channel_gains(gain_to_uv)
-        
+
         # Not sure what this is for?
         self._kwargs = {
             "port": port,
@@ -135,7 +135,7 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
 
 class RedisStreamRecordingSegment(BaseRecordingSegment):
     def __init__(
-        self, 
+        self,
         client: redis.Redis,
         stream_name: str,
         data_key: Union[bytes, str],
@@ -145,10 +145,10 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         entry_ids: list[bytes],
         frames_per_entry: int = 1,
         t_start: Optional[float] = None,
-        channel_dim: int = 0, # TODO: confusing name?
-    ):        
+        channel_dim: int = 0,  # TODO: confusing name?
+    ):
         """Initialize the RedisStreamRecordingSegment
-        
+
         Parameters
         ----------
         client : redis.Redis
@@ -177,22 +177,22 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         channel_dim : int, default: 0
             If frames_per_entry > 1, then channel_dim indicates the
             axis ordering of the data in each entry. If channel_dim
-            = 0, then the data is assumed to originally be of shape 
+            = 0, then the data is assumed to originally be of shape
             (channel_count, frames_per_entry). If channel_dim = 1,
-            then the data is assumed to originally be of shape 
+            then the data is assumed to originally be of shape
             (frames_per_entry, channel_count)
         """
         # initialize base class
         BaseRecordingSegment.__init__(self, time_vector=timestamps, t_start=t_start)
-        
+
         # Assign Redis client and check connection
         self._client = client
         self._client.ping()
-        
+
         # arg checks
         assert channel_dim in [0, 1]
         assert len(entry_ids) == self._client.xlen(stream_name)
-        
+
         # save some variables
         self._stream_name = stream_name
         self._data_key = bytes(data_key, "utf-8") if isinstance(data_key, str) else data_key
@@ -206,7 +206,7 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
     def get_num_samples(self) -> int:
         """Returns number of samples in the segment"""
         return self._num_samples
-        
+
     def get_traces(
         self,
         start_frame: Optional[int] = None,
@@ -214,7 +214,7 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         channel_indices: Optional[list] = None,
     ) -> np.ndarray:
         """Gets specified recording traces from Redis
-        
+
         Parameters
         ----------
         start_frame : int, optional
@@ -224,7 +224,7 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
             exclusive
         channel_indices : list, optional
             List of channel indices to retrieve data for
-            
+
         Returns
         -------
         traces : numpy.ndarray
@@ -236,24 +236,24 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
             start_frame = 0
         if end_frame is None:
             end_frame = self._num_samples
-        
+
         # arg check (not allowing negative indices currently)
         assert start_frame >= 0 and start_frame < self._num_samples
         assert end_frame > 0 and end_frame <= self._num_samples
-        
+
         # convert to entry number and within-entry idx
         start_entry_idx = start_frame // self._frames_per_entry
         start_frame_idx = start_frame % self._frames_per_entry
-        end_entry_idx = (end_frame - 1) // self._frames_per_entry # inclusive
-        end_frame_idx = (end_frame - 1) % self._frames_per_entry # inclusive
-        
+        end_entry_idx = (end_frame - 1) // self._frames_per_entry  # inclusive
+        end_frame_idx = (end_frame - 1) % self._frames_per_entry  # inclusive
+
         # read needed entries
         stream_entries = self._client.xrange(
             self._stream_name,
             min=self._entry_ids[start_entry_idx],
             max=self._entry_ids[end_entry_idx],
         )
-        
+
         # loop through, convert to numpy and stack
         traces = []
         for entry in stream_entries:
@@ -270,12 +270,12 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
                 entry_data = entry_data[:, channel_indices]
             traces.append(entry_data)
         traces = np.concatenate(traces, axis=0)
-        
+
         # slicing operations
         # TODO: make more compact
         if start_frame_idx > 0:
             traces = traces[start_frame_idx:]
         if end_frame_idx < (self._frames_per_entry - 1):
-            traces = traces[:(end_frame_idx + 1 - self._frames_per_entry)]
-        
+            traces = traces[: (end_frame_idx + 1 - self._frames_per_entry)]
+
         return traces
