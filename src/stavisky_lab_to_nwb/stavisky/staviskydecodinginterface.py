@@ -150,13 +150,13 @@ class StaviskyDecodedTextInterface(BaseDataInterface):
         # get unique decoder outputs
         output_set = sorted(list(set(decoded_text)))
         decoded_text_idx = [output_set.index(sentence) for sentence in decoded_text]
-        
+
         # cast to lower int dtype if possible
         if np.max(decoded_text_idx) < 65536:
-            decoded_text_idx = np.array(decoded_text_idx, dtype='uint16')
+            decoded_text_idx = np.array(decoded_text_idx, dtype="uint16")
         else:
             # can't imagine it'll exceed 4294967295
-            decoded_text_idx = np.array(decoded_text_idx, dtype='uint32')
+            decoded_text_idx = np.array(decoded_text_idx, dtype="uint32")
 
         # make labeledevents obj
         events = LabeledEvents(
