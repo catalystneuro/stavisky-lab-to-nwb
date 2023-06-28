@@ -105,7 +105,8 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             unit_ids=unit_ids,
             entry_ids=entry_ids,
             frames_per_entry=frames_per_entry,
-            t_start=0, # t_start != start_time
+            timestamps=timestamps,
+            t_start=None, # t_start != start_time
             unit_dim=unit_dim,
         )
         self.add_sorting_segment(sorting_segment)
@@ -185,6 +186,8 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         np.array
             The 1d times array
         """
+        if self.has_recording():
+            return self._recording.get_times(segment_index=segment_index)
         segment_index = self._check_segment_index(segment_index)
         segment = self._sorting_segments[segment_index]
         times = segment.get_times()
@@ -202,21 +205,25 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         with_warning : bool, optional
             If True, a warning is printed, by default True
         """
-        segment_index = self._check_segment_index(segment_index)
-        segment = self._sorting_segments[segment_index]
+        if self.has_recording():
+            self._recording.set_times(
+                times=times, segment_index=segment_index, with_warning=with_warning)
+        else:
+            segment_index = self._check_segment_index(segment_index)
+            segment = self._sorting_segments[segment_index]
 
-        assert times.ndim == 1, "Time must have ndim=1"
-        assert segment.get_num_samples() == times.shape[0], "times have wrong shape"
+            assert times.ndim == 1, "Time must have ndim=1"
+            assert segment.get_num_samples() == times.shape[0], "times have wrong shape"
 
-        segment.t_start = None
-        segment.time_vector = times.astype("float64")
+            segment.t_start = None
+            segment.time_vector = times.astype("float64")
 
-        if with_warning:
-            warn(
-                "Setting times with Recording.set_times() is not recommended because "
-                "times are not always propagated to across preprocessing"
-                "Use use this carefully!"
-            )
+            if with_warning:
+                warn(
+                    "Setting times with Recording.set_times() is not recommended because "
+                    "times are not always propagated to across preprocessing"
+                    "Use use this carefully!"
+                )
         
         
 class RedisStreamSortingSegment(BaseSortingSegment):

@@ -55,8 +55,32 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     conversion_options.update(dict(Recording=dict()))
 
     # Add Sorting
-    # source_data.update(dict(Sorting=dict()))
-    # conversion_options.update(dict(Sorting=dict()))
+    source_data.update(
+        dict(
+            Sorting=dict(
+                port=port,
+                host=host,
+                stream_name="neuralFeatures_1ms",
+                data_key="threshold_crossings",
+                dtype="int16",
+                unit_count=256,
+                frames_per_entry=1,
+                start_time=start_time,
+                timestamp_source="redis",
+                timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            Sorting=dict(
+                units_description=(
+                    "Unsorted threshold crossings binned at 1 ms resolution "
+                    "for each recording channel."
+                )
+            )
+        )
+    )
 
     # Add Trials
     source_data.update(dict(Trials=dict(port=port, host=host)))
@@ -98,7 +122,7 @@ if __name__ == "__main__":
     # Parameters for conversion
     port = 6379
     host = "localhost"
-    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_recording/").expanduser()
+    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_sorting/").expanduser()
     stub_test = False
 
     session_to_nwb(

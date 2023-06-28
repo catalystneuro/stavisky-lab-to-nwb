@@ -5,7 +5,7 @@ from stavisky_lab_to_nwb.stavisky import (
     # StaviskyPhonemeLogitsInterface,
     # StaviskyDecodedTextInterface,
     # StaviskySpikingBandPowerInterface,
-    # RedisSortingInterface,
+    StaviskySortingInterface,
     StaviskyRecordingInterface,
     StaviskyTrialsInterface,
 )
@@ -16,7 +16,7 @@ class StaviskyNWBConverter(NWBConverter):
 
     data_interface_classes = dict(
         Recording=StaviskyRecordingInterface,
-        # Sorting=RedisSortingInterface,
+        Sorting=StaviskySortingInterface,
         Trials=StaviskyTrialsInterface,
     )
 
