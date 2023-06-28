@@ -3,6 +3,7 @@ import redis
 import numpy as np
 from pynwb import NWBFile, TimeSeries
 from typing import Optional, Union, Literal
+from hdmf.backends.hdf5 import H5DataIO
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools.nwb_helpers import get_module
@@ -62,7 +63,7 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
 
         # get processing module
         module_name = "ecephys"
-        module_description = "Contains processed ecephys data like spiking band power"
+        module_description = "Contains processed ecephys data like spiking band power."
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
 
         # extract 1 ms data
@@ -141,19 +142,19 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
         # create timeseries objs
         sbp_1ms_timeseries = TimeSeries(
             name="spiking_band_power_1ms",
-            data=sbp_1ms,
+            data=H5DataIO(sbp_1ms, compression="gzip"),
             unit="V^2/Hz",
             # conversion=?, # TODO: double check scaling of values
-            timestamps=timestamps_1ms,
-            description="Spiking band power in the 250 Hz to 5 kHz frequency range computed 1 kHz",
+            timestamps=H5DataIO(timestamps_1ms, compression="gzip"),
+            description="Spiking band power in the 250 Hz to 5 kHz frequency range computed 1 kHz.",
         )
         sbp_20ms_timeseries = TimeSeries(
             name="spiking_band_power_20ms",
-            data=sbp_20ms,
+            data=H5DataIO(sbp_20ms, compression="gzip"),
             unit="V^2/Hz",
             # conversion=?,
-            timestamps=timestamps_20ms,
-            description="Spiking band power in the 250 Hz to 5 kHz frequency range computed 1 kHz and re-binned to 50 Hz",
+            timestamps=H5DataIO(timestamps_20ms, compression="gzip"),
+            description="Spiking band power in the 250 Hz to 5 kHz frequency range computed 1 kHz and re-binned to 50 Hz.",
         )
 
         # add to nwbfile
@@ -162,7 +163,5 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
 
         # close redis client
         r.close()
-
-        # import pdb; pdb.set_trace()
 
         return nwbfile
