@@ -2,8 +2,8 @@
 from neuroconv import NWBConverter
 
 from stavisky_lab_to_nwb.stavisky import (
-    # StaviskyPhonemeLogitsInterface,
-    # StaviskyDecodedTextInterface,
+    StaviskyPhonemeLogitsInterface,
+    StaviskyDecodedTextInterface,
     # StaviskySpikingBandPowerInterface,
     # RedisSortingInterface,
     StaviskyRecordingInterface,
@@ -18,6 +18,8 @@ class StaviskyNWBConverter(NWBConverter):
         Recording=StaviskyRecordingInterface,
         # Sorting=RedisSortingInterface,
         Trials=StaviskyTrialsInterface,
+        PhonemeLogits=StaviskyPhonemeLogitsInterface,
+        DecodedText=StaviskyDecodedTextInterface,
     )
 
     def __init__(

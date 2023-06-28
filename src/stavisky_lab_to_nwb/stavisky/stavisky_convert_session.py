@@ -62,6 +62,12 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     source_data.update(dict(Trials=dict(port=port, host=host)))
     conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
 
+    # Add Decoding
+    source_data.update(dict(PhonemeLogits=dict(port=port, host=host)))
+    conversion_options.update(dict(PhonemeLogits=dict()))
+    source_data.update(dict(DecodedText=dict(port=port, host=host)))
+    conversion_options.update(dict(DecodedText=dict()))
+
     converter = StaviskyNWBConverter(source_data=source_data)
 
     # Add datetime to conversion
