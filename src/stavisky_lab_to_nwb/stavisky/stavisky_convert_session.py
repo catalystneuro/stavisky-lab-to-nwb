@@ -44,13 +44,19 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     source_data.update(dict(Trials=dict(port=port, host=host)))
     conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
 
+    # Add Decoding
+    source_data.update(dict(PhonemeLogits=dict(port=port, host=host)))
+    conversion_options.update(dict(PhonemeLogits=dict()))
+    source_data.update(dict(DecodedText=dict(port=port, host=host)))
+    conversion_options.update(dict(DecodedText=dict()))
+
     converter = StaviskyNWBConverter(source_data=source_data)
 
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    date = datetime.datetime.fromtimestamp(np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()).replace(
-        tzinfo=ZoneInfo("US/Pacific")
-    )
+    date = datetime.datetime.fromtimestamp(
+        np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()
+    ).astimezone(tz=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
 
     # Add subject ID
@@ -82,7 +88,7 @@ if __name__ == "__main__":
     # Parameters for conversion
     port = 6379
     host = "localhost"
-    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/simulated_data/").expanduser()
+    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_decoding/").expanduser()
     stub_test = False
 
     session_to_nwb(
