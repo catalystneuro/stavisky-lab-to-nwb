@@ -1,4 +1,5 @@
 """Class for converting generic ecephys data."""
+import json
 import redis
 import numpy as np
 from pynwb import NWBFile, TimeSeries
@@ -138,23 +139,47 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
             start_time = timestamps_1ms[0]
         timestamps_1ms -= start_time
         timestamps_20ms -= start_time
+        
+        # get metadata about filtering, etc.
+        data = json.loads(r.xrange("supergraph_stream")[0][1][b"data"])
+        try: # shouldn't fail but just in case
+            params = data["nodes"]["featureExtraction"]["parameters"]
+        except:
+            params = {}
+        butter_lowercut = params.get("butter_lowercut", None)
+        butter_uppercut = params.get("butter_uppercut", None)
+        butter_order = params.get("butter_order", None)
+        clip_value = params.get("spike_pow_clip_thresh", None)
+        
+        # build description from metadata
+        info = ""
+        if butter_lowercut or butter_uppercut:
+            info += (
+                f" Bandpass filtered with a {butter_order or 'unknown'} order "
+                f"Butterworth filter with lower cutoff {butter_lowercut or '0'} Hz "
+                f"and upper cutoff {butter_uppercut or 'inf'} Hz."
+            )
+        if clip_value:
+            info += f" Clipped to a maximum of {clip_value}."
+        description_1ms = "Spiking band power computed at 1 kHz." + info
+        description_20ms = "Spiking band power computed at 1 kHz and downsampled to 50 Hz." + info
 
         # create timeseries objs
         sbp_1ms_timeseries = TimeSeries(
             name="spiking_band_power_1ms",
             data=H5DataIO(sbp_1ms, compression="gzip"),
-            unit="V^2/Hz",
-            # conversion=?, # TODO: double check scaling of values
+            unit="V^2",
+            conversion=1e-8,
             timestamps=H5DataIO(timestamps_1ms, compression="gzip"),
-            description="Spiking band power in the 250 Hz to 5 kHz frequency range computed 1 kHz.",
+            description=description_1ms,
         )
         sbp_20ms_timeseries = TimeSeries(
             name="spiking_band_power_20ms",
             data=H5DataIO(sbp_20ms, compression="gzip"),
-            unit="V^2/Hz",
-            # conversion=?,
+            unit="V^2",
+            conversion=1e-8,
             timestamps=H5DataIO(timestamps_20ms, compression="gzip"),
-            description="Spiking band power in the 250 Hz to 5 kHz frequency range computed 1 kHz and re-binned to 50 Hz.",
+            description=description_20ms,
         )
 
         # add to nwbfile
