@@ -11,7 +11,7 @@ from stavisky_lab_to_nwb.redis_interfaces.redisextractormixin import RedisExtrac
 
 class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
     def __init__(
-        self, 
+        self,
         port: int,
         host: str,
         stream_name: str,
@@ -77,11 +77,11 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             host=host,
         )
         self._client.ping()
-        
+
         # Construct unit IDs if not provided
         if unit_ids is None:
             unit_ids = np.arange(unit_count, dtype=int).tolist()
-        
+
         # get entry IDs and timestamps
         stream_len = self._client.xlen(stream_name)
         assert stream_len > 0, "Stream has length 0"
@@ -91,9 +91,9 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             start_time=start_time,
             sampling_frequency=sampling_frequency,
             timestamp_source=timestamp_source,
-            **timestamp_kwargs
+            **timestamp_kwargs,
         )
-        
+
         # Initialize Sorting and SortingSegment
         # NOTE: does not support multiple segments, assumes continuous recording for whole stream
         BaseSorting.__init__(self, unit_ids=unit_ids, sampling_frequency=sampling_frequency)
@@ -106,11 +106,11 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             entry_ids=entry_ids,
             frames_per_entry=frames_per_entry,
             timestamps=timestamps,
-            t_start=None, # t_start != start_time
+            t_start=None,  # t_start != start_time
             unit_dim=unit_dim,
         )
         self.add_sorting_segment(sorting_segment)
-        
+
         # Not sure what this is for?
         self._kwargs = {
             "port": port,
@@ -123,7 +123,7 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             "timestamp_source": timestamp_source,
             # "timestamp_kwargs": timestamp_kwargs,
         }
-    
+
     def get_unit_spike_train(
         self,
         unit_id,
@@ -133,7 +133,7 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         return_times: bool = False,
     ):
         """Get spike train for a particular unit.
-        
+
         Parameters
         ----------
         unit_id : int or str
@@ -143,7 +143,7 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             there is only one segment, segment_index=None returns
             that segment
         start_frame : int, optional
-            The frame to start fetching data from, if only a 
+            The frame to start fetching data from, if only a
             portion of the segment is to be returned
         end_frame : int, optional
             The frame to stop fetching data from (exclusive),
@@ -206,8 +206,7 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             If True, a warning is printed, by default True
         """
         if self.has_recording():
-            self._recording.set_times(
-                times=times, segment_index=segment_index, with_warning=with_warning)
+            self._recording.set_times(times=times, segment_index=segment_index, with_warning=with_warning)
         else:
             segment_index = self._check_segment_index(segment_index)
             segment = self._sorting_segments[segment_index]
@@ -224,11 +223,11 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
                     "times are not always propagated to across preprocessing"
                     "Use use this carefully!"
                 )
-        
-        
+
+
 class RedisStreamSortingSegment(BaseSortingSegment):
     def __init__(
-        self, 
+        self,
         client: redis.Redis,
         stream_name: str,
         data_key: Union[bytes, str],
@@ -264,7 +263,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
             Number of frames (i.e. a single time point) contained
             within each Redis stream entry
         timestamps : numpy.ndarray, optional
-            A vector of timestamps corresponding to all samples in 
+            A vector of timestamps corresponding to all samples in
             the segment
         t_start : float, optional
             The start time of the segment, relative to the recording
@@ -281,7 +280,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         """
         # initialize base class
         BaseSortingSegment.__init__(self, t_start=t_start)
-        
+
         # timestamp handling
         if sampling_frequency is None:
             assert timestamps is not None, "Pass either 'sampling_frequency' or 'timestamps'"
@@ -290,15 +289,15 @@ class RedisStreamSortingSegment(BaseSortingSegment):
             assert sampling_frequency is not None, "Pass either 'sampling_frequency' or 'timestamps'"
         self.time_vector = timestamps
         self.sampling_frequency = sampling_frequency
-        
+
         # assign Redis client and check connection
         self._client = client
         self._client.ping()
-        
+
         # arg checks
         assert unit_dim in [0, 1]
         assert len(entry_ids) == self._client.xlen(stream_name)
-        
+
         # save some variables
         self._stream_name = stream_name
         self._data_key = bytes(data_key, "utf-8") if isinstance(data_key, str) else data_key
@@ -309,18 +308,18 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         self._entry_ids = entry_ids
         self._frames_per_entry = frames_per_entry
         self._num_samples = frames_per_entry * len(entry_ids)
-    
+
         # make chunk size an init arg?
         self._spike_frames = None
         self._load_spike_frames(chunk_size=1000)
-    
+
     def _load_spike_frames(self, chunk_size: int = 1000):
         # initialize loop variables
         stream_entries = self._client.xrange(self._stream_name, count=chunk_size)
         frame_counter = 0
         spike_frames = []
         spike_labels = []
-        
+
         # loop until all entries read
         while len(stream_entries) > 0:
             for entry in stream_entries:
@@ -346,8 +345,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
                 # update base frame number
                 frame_counter += self._frames_per_entry
             # load next chunk of entries
-            stream_entries = self._client.xrange(
-                self._stream_name, min=b'(' + stream_entries[-1][0], count=chunk_size)
+            stream_entries = self._client.xrange(self._stream_name, min=b"(" + stream_entries[-1][0], count=chunk_size)
         # stack all spike frames and labels
         spike_frames = np.concatenate(spike_frames, axis=0)
         spike_labels = np.concatenate(spike_labels, axis=0)
@@ -355,9 +353,8 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         assert len(spike_frames) == len(spike_labels)
         assert np.all((spike_labels >= 0) & (spike_labels < self._unit_count))
         # create list of views into spike frames indexed by label/unit
-        self._spike_frames = [
-            spike_frames[spike_labels == i] for i in range(self._unit_count)]
-    
+        self._spike_frames = [spike_frames[spike_labels == i] for i in range(self._unit_count)]
+
     def get_num_samples(self) -> int:
         return self._num_samples
 
@@ -382,22 +379,22 @@ class RedisStreamSortingSegment(BaseSortingSegment):
     ) -> np.ndarray:
         # make sure data are loaded already
         assert self._spike_frames is not None
-        
+
         # get unit idx
         unit_idx = self._unit_ids.index(unit_id)
-        
+
         # handle None args
         if start_frame is None:
             start_frame = 0
         if end_frame is None:
             end_frame = self._num_samples
-        
+
         # arg check (not allowing negative indices currently)
         assert start_frame >= 0 and start_frame < self._num_samples
         assert end_frame > 0 and end_frame <= self._num_samples
-        
+
         # get spike frames and filter based on frame range
         spike_frames = self._spike_frames[unit_idx]
         spike_frames = spike_frames[(spike_frames >= start_frame) & (spike_frames < end_frame)]
-        
+
         return spike_frames

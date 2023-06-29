@@ -28,7 +28,7 @@ class StaviskyNWBConverter(NWBConverter):
         verbose: bool = True,
     ):
         super().__init__(source_data=source_data, verbose=verbose)
-        
+
         # self.data_interface_objects["Sorting"].set_aligned_timestamps(
         #     self.data_interface_objects["Recording"].get_timestamps()[::30]
         # )

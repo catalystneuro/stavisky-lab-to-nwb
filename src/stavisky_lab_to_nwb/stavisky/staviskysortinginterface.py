@@ -11,7 +11,7 @@ from stavisky_lab_to_nwb.redis_interfaces import RedisStreamSortingInterface
 
 class StaviskySortingInterface(RedisStreamSortingInterface):
     """Sorting interface for Stavisky Redis conversion"""
-    
+
     def __init__(
         self,
         port: int,
@@ -45,7 +45,7 @@ class StaviskySortingInterface(RedisStreamSortingInterface):
             timestamp_kwargs=timestamp_kwargs,
             unit_dim=unit_dim,
         )
-    
+
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         # Removed requirement of having recording
         assert (
@@ -63,9 +63,7 @@ class StaviskySortingInterface(RedisStreamSortingInterface):
             ), f"The number of timestamp vectors ({len(aligned_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
 
             for segment_index in range(self._number_of_segments):
-                self.sorting_extractor.set_times(
-                    times=aligned_timestamps[segment_index], segment_index=segment_index
-                )
+                self.sorting_extractor.set_times(times=aligned_timestamps[segment_index], segment_index=segment_index)
 
     def add_to_nwbfile(
         self,
@@ -86,5 +84,5 @@ class StaviskySortingInterface(RedisStreamSortingInterface):
             units_name=units_name,
             units_description=units_description,
         )
-        
-        nwbfile.units.resolution = 1e-3 # bad idea?
+
+        nwbfile.units.resolution = 1e-3  # bad idea?

@@ -11,10 +11,10 @@ from stavisky_lab_to_nwb.redis_interfaces.redissortingextractor import RedisStre
 
 class RedisStreamSortingInterface(BaseSortingExtractorInterface):
     """Sorting interface for Redis stream data"""
-    
+
     ExtractorModuleName = "stavisky_lab_to_nwb.redis_interfaces.redissortingextractor"
     ExtractorName = "RedisStreamSortingExtractor"
-    
+
     def __init__(
         self,
         port: int,
