@@ -139,10 +139,10 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
             start_time = timestamps_1ms[0]
         timestamps_1ms -= start_time
         timestamps_20ms -= start_time
-        
+
         # get metadata about filtering, etc.
         data = json.loads(r.xrange("supergraph_stream")[0][1][b"data"])
-        try: # shouldn't fail but just in case
+        try:  # shouldn't fail but just in case
             params = data["nodes"]["featureExtraction"]["parameters"]
         except:
             params = {}
@@ -150,7 +150,7 @@ class StaviskySpikingBandPowerInterface(BaseDataInterface):
         butter_uppercut = params.get("butter_uppercut", None)
         butter_order = params.get("butter_order", None)
         clip_value = params.get("spike_pow_clip_thresh", None)
-        
+
         # build description from metadata
         info = ""
         if butter_lowercut or butter_uppercut:
