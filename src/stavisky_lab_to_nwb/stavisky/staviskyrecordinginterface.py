@@ -103,7 +103,7 @@ class StaviskyRecordingInterface(RedisStreamRecordingInterface):
         if n_channels == self.n_arrays * self.n_electrodes_per_array:
             channel_groups = np.repeat(np.arange(self.n_arrays), self.n_electrodes_per_array)
             channel_group_names = [f"Group{i}" for i in (channel_groups + 1)]
-        self.recording_extractor.set_channel_groups(channel_group_names)
+            self.recording_extractor.set_channel_groups(channel_group_names)
 
         super().add_to_nwbfile(
             nwbfile=nwbfile,

@@ -52,7 +52,15 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
             )
         )
     )
-    conversion_options.update(dict(Recording=dict()))
+    conversion_options.update(
+        dict(
+            Recording=dict(
+                iterator_opts=dict(
+                    buffer_gb=1.0,  # may need to reduce depending on machine
+                )
+            )
+        )
+    )
 
     # Add Sorting
     source_data.update(
@@ -86,11 +94,17 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     source_data.update(dict(Trials=dict(port=port, host=host)))
     conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
 
+    # Add Decoding
+    source_data.update(dict(PhonemeLogits=dict(port=port, host=host)))
+    conversion_options.update(dict(PhonemeLogits=dict()))
+    source_data.update(dict(DecodedText=dict(port=port, host=host)))
+    conversion_options.update(dict(DecodedText=dict()))
+
     converter = StaviskyNWBConverter(source_data=source_data)
 
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    date = datetime.datetime.fromtimestamp(start_time).replace(tzinfo=ZoneInfo("US/Pacific"))
+    date = datetime.datetime.fromtimestamp(start_time).astimezone(tz=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
 
     # Add subject ID
