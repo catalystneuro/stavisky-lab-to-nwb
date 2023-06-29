@@ -271,6 +271,6 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         traces = np.concatenate(traces, axis=0)
 
         # slicing operations
-        traces = traces[start_frame_idx:(start_frame_idx+end_frame-start_frame)]
+        traces = traces[start_frame_idx : (start_frame_idx + end_frame - start_frame)]
 
         return traces

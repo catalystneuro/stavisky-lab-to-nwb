@@ -56,7 +56,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
         dict(
             Recording=dict(
                 iterator_opts=dict(
-                    buffer_gb=1., # may need to reduce depending on machine
+                    buffer_gb=1.0,  # may need to reduce depending on machine
                 )
             )
         )
