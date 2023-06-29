@@ -2,6 +2,7 @@ import redis
 import numpy as np
 import scipy.signal as ssignal
 from typing import Optional, Literal, Union
+from warnings import warn
 
 
 def safe_decode(string_or_bytes: Union[str, bytes], encoding="utf-8"):
@@ -212,8 +213,8 @@ class RedisExtractorMixin:
                     causal_check=smoothing_causal_check,
                 )
                 if timestamps[0] < 0:
-                    print(
-                        "WARNING: after smoothing, some timestamps precede start time. "
+                    warn(
+                        "After smoothing, some timestamps precede start time. "
                         + f"Start time: {start_time}. Earliest timestamp: {start_time + timestamp[0]}. "
                         + "Adjusting start time to earliest timestamp..."
                     )

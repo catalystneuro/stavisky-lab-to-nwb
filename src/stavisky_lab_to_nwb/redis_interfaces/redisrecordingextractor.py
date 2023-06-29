@@ -63,7 +63,7 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
             If timestamp source is not "redis", then timestamp_kwargs
             must contain the unit, dtype, and encoding of the timestamp
             data, and optionally smoothing parameters. See
-            `RedisExtractorMixin`
+            `RedisExtractorMixin.get_ids_and_timestamps()`
         gain_to_uv : float, optional
             Scaling necessary to convert the recording values to
             microvolts
@@ -110,7 +110,7 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
             timestamps=timestamps,
             entry_ids=entry_ids,
             frames_per_entry=frames_per_entry,
-            t_start=0,  # t_start != start_time
+            t_start=None,  # t_start != start_time
             channel_dim=channel_dim,
         )
         self.add_recording_segment(recording_segment)
@@ -245,7 +245,6 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         start_entry_idx = start_frame // self._frames_per_entry
         start_frame_idx = start_frame % self._frames_per_entry
         end_entry_idx = (end_frame - 1) // self._frames_per_entry  # inclusive
-        end_frame_idx = (end_frame - 1) % self._frames_per_entry  # inclusive
 
         # read needed entries
         stream_entries = self._client.xrange(
@@ -272,10 +271,6 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         traces = np.concatenate(traces, axis=0)
 
         # slicing operations
-        # TODO: make more compact
-        if start_frame_idx > 0:
-            traces = traces[start_frame_idx:]
-        if end_frame_idx < (self._frames_per_entry - 1):
-            traces = traces[: (end_frame_idx + 1 - self._frames_per_entry)]
+        traces = traces[start_frame_idx:(start_frame_idx+end_frame-start_frame)]
 
         return traces

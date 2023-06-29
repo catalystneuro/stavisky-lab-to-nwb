@@ -52,7 +52,15 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
             )
         )
     )
-    conversion_options.update(dict(Recording=dict()))
+    conversion_options.update(
+        dict(
+            Recording=dict(
+                iterator_opts=dict(
+                    buffer_gb=1., # may need to reduce depending on machine
+                )
+            )
+        )
+    )
 
     # Add Sorting
     # source_data.update(dict(Sorting=dict()))
@@ -72,7 +80,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    date = datetime.datetime.fromtimestamp(start_time).replace(tzinfo=ZoneInfo("US/Pacific"))
+    date = datetime.datetime.fromtimestamp(start_time).astimezone(tz=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
 
     # Add subject ID
