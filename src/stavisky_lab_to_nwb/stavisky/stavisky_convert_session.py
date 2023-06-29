@@ -18,6 +18,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
     # Extract session metadata
     rdb_metadata = r.xrange("metadata")[0][1]
+    start_time = np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()
 
     # Prepare output path
     output_dir_path = Path(output_dir_path)
@@ -33,12 +34,60 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     conversion_options = dict()
 
     # Add Recording
-    # source_data.update(dict(Recording=dict(port=port, host=host)))
-    # conversion_options.update(dict(Recording=dict()))
+    source_data.update(
+        dict(
+            Recording=dict(
+                port=port,
+                host=host,
+                stream_name="continuousNeural",
+                data_key="samples",
+                dtype="int16",
+                channel_count=256,
+                frames_per_entry=30,
+                start_time=start_time,
+                timestamp_source="redis",
+                timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
+                gain_to_uv=100.0,
+                channel_dim=1,
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            Recording=dict(
+                iterator_opts=dict(
+                    buffer_gb=1.0,  # may need to reduce depending on machine
+                )
+            )
+        )
+    )
 
     # Add Sorting
-    # source_data.update(dict(Sorting=dict()))
-    # conversion_options.update(dict(Sorting=dict()))
+    source_data.update(
+        dict(
+            Sorting=dict(
+                port=port,
+                host=host,
+                stream_name="neuralFeatures_1ms",
+                data_key="threshold_crossings",
+                dtype="int16",
+                unit_count=256,
+                frames_per_entry=1,
+                start_time=start_time,
+                timestamp_source="redis",
+                timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            Sorting=dict(
+                units_description=(
+                    "Unsorted threshold crossings binned at 1 ms resolution " "for each recording channel."
+                )
+            )
+        )
+    )
 
     # Add Trials
     source_data.update(dict(Trials=dict(port=port, host=host)))
@@ -54,9 +103,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    date = datetime.datetime.fromtimestamp(
-        np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()
-    ).astimezone(tz=ZoneInfo("US/Pacific"))
+    date = datetime.datetime.fromtimestamp(start_time).astimezone(tz=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
 
     # Add subject ID
@@ -88,7 +135,7 @@ if __name__ == "__main__":
     # Parameters for conversion
     port = 6379
     host = "localhost"
-    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_decoding/").expanduser()
+    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_sorting/").expanduser()
     stub_test = False
 
     session_to_nwb(
