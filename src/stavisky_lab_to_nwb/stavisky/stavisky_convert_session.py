@@ -40,9 +40,49 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     # source_data.update(dict(Sorting=dict()))
     # conversion_options.update(dict(Sorting=dict()))
 
-    # Add SpikingBandPower
-    source_data.update(dict(SpikingBandPower=dict(port=port, host=host)))
-    conversion_options.update(dict(SpikingBandPower=dict(stub_test=stub_test, smooth_timestamps=True)))
+    # Add SpikingBandPower 1 ms resolution
+    source_data.update(
+        dict(
+            SpikingBandPower1ms=dict(
+                port=port, 
+                host=host, 
+                stream_name="neuralFeatures_1ms", 
+                data_key="spike_band_power",
+                ts_key="spiking_band_power_1ms"
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            SpikingBandPower1ms=dict(
+                stub_test=stub_test, 
+                smooth_timestamps=True,
+                chunk_size=10000,
+            )
+        )
+    )
+    
+    # Add SpikingBandPower 20 ms resolution
+    source_data.update(
+        dict(
+            SpikingBandPower20ms=dict(
+                port=port, 
+                host=host, 
+                stream_name="binnedFeatures_20ms", 
+                data_key="spike_band_power_bin",
+                ts_key="spiking_band_power_20ms"
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            SpikingBandPower20ms=dict(
+                stub_test=stub_test, 
+                smooth_timestamps=True,
+                chunk_size=1000,
+            )
+        )
+    )
 
     # Add Trials
     source_data.update(dict(Trials=dict(port=port, host=host)))
