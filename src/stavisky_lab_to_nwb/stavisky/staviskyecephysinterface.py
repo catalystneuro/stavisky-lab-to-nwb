@@ -22,12 +22,12 @@ class StaviskySpikingBandPowerInterface(BaseTemporalAlignmentInterface):
         data_key: str,
         ts_key: str = "spiking_band_power",
         timestamp_source: str = "redis",
-        timestamp_conversion: float = 1.,
+        timestamp_conversion: float = 1.0,
         timestamp_encoding: Optional[str] = None,
         timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
     ):
         """Initialize StaviskySpikingBandPowerInterface
-        
+
         Parameters
         ----------
         port : int
@@ -42,16 +42,16 @@ class StaviskySpikingBandPowerInterface(BaseTemporalAlignmentInterface):
         ts_key : str
             Name of the timeseries to be saved to NWB file
         timestamp_source : bytes or str, default: "redis"
-            The source of the timestamp information in the Redis stream. 
+            The source of the timestamp information in the Redis stream.
             See `load_timestamps()`
         timestamp_conversion : float, default: 1
             Conversion factor needed to scale the timestamps to seconds.
             See `load_timestamps()`
         timestamp_encoding : {"string", "buffer"}, optional
-            How timestamps are encoded in Redis entry data. See 
+            How timestamps are encoded in Redis entry data. See
             `load_timestamps()`
         timestamp_dtype : str, type, or numpy.dtype, optional
-            The data type of the timestamps in Redis. See 
+            The data type of the timestamps in Redis. See
             `load_timestamps()`
         """
         super().__init__(port=port, host=host, stream_name=stream_name, data_key=data_key)
@@ -62,16 +62,16 @@ class StaviskySpikingBandPowerInterface(BaseTemporalAlignmentInterface):
             timestamp_encoding=timestamp_encoding,
             timestamp_dtype=timestamp_dtype,
         )
-    
+
     def get_original_timestamps(
         self,
         timestamp_source: str = "redis",
         timestamp_encoding: Optional[str] = None,
         timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
-        timestamp_conversion: float = 1.,
+        timestamp_conversion: float = 1.0,
     ):
         """Get original timestamps for this data stream
-        
+
         Parameters
         ----------
         timestamp_source : bytes or str, default: "redis"
@@ -102,7 +102,7 @@ class StaviskySpikingBandPowerInterface(BaseTemporalAlignmentInterface):
         r.ping()
         stream_name = self.source_data["stream_name"]
         assert r.xlen(stream_name) > 0
-        chunk_size = 1000 # TODO: figure out how to handle this
+        chunk_size = 1000  # TODO: figure out how to handle this
 
         # check timestamp-related args
         if timestamp_source == "redis":
@@ -115,7 +115,7 @@ class StaviskySpikingBandPowerInterface(BaseTemporalAlignmentInterface):
         if timestamp_encoding is not None:
             assert timestamp_encoding in ["str", "buffer"]
         assert timestamp_conversion > 0
-        
+
         # extract timestamps
         timestamps = []
         # loop through stream entries
@@ -141,10 +141,10 @@ class StaviskySpikingBandPowerInterface(BaseTemporalAlignmentInterface):
 
         # post-process timestamps
         timestamps *= timestamp_conversion
-        
+
         # close redis client
         r.close()
-        
+
         return timestamps
 
     def add_to_nwbfile(
@@ -156,7 +156,7 @@ class StaviskySpikingBandPowerInterface(BaseTemporalAlignmentInterface):
         smooth_timestamps: bool = False,
     ):
         """Add spiking band power to NWB file
-        
+
         Parameters
         ----------
         nwbfile : NWBFile, optional
@@ -212,7 +212,7 @@ class StaviskySpikingBandPowerInterface(BaseTemporalAlignmentInterface):
             timestamps = np.linspace(timestamps[0], timestamps[-1], len(timestamps))
 
         # get metadata about filtering, etc.
-        bin_size = int(stream_name.split('_')[-1].strip('ms'))
+        bin_size = int(stream_name.split("_")[-1].strip("ms"))
         frequency = 1000 / bin_size
         data = json.loads(r.xrange("supergraph_stream")[0][1][b"data"])
         try:  # shouldn't fail but just in case
@@ -253,7 +253,7 @@ class StaviskySpikingBandPowerInterface(BaseTemporalAlignmentInterface):
         r.close()
 
         return nwbfile
-    
+
     def get_timestamps(self) -> np.ndarray:
         return self._timestamps
 
