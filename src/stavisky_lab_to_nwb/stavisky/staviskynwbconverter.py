@@ -32,7 +32,7 @@ class StaviskyNWBConverter(NWBConverter):
         verbose: bool = True,
     ):
         super().__init__(source_data=source_data, verbose=verbose)
-    
+
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,

@@ -25,7 +25,7 @@ class RedisExtractorMixin:
         frames_per_entry: int = 1,
         sampling_frequency: Optional[float] = None,
         timestamp_source: Optional[Union[bytes, str]] = None,
-        timestamp_conversion: float = 1.,
+        timestamp_conversion: float = 1.0,
         timestamp_encoding: Optional[Literal["str", "buffer"]] = None,
         timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
         chunk_size: int = 1000,
@@ -105,7 +105,7 @@ class RedisExtractorMixin:
         num_entries = self._client.xlen(stream_name)
 
         # get timestamps if already calculable
-        if (sampling_frequency is not None):
+        if sampling_frequency is not None:
             timestamps = np.arange(num_entries * frames_per_entry, dtype=np.float64) / sampling_frequency
             build_timestamps = False
         else:

@@ -77,7 +77,7 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
             host=host,
         )
         self._client.ping()
-        
+
         # check args and data validity
         stream_len = self._client.xlen(stream_name)
         assert stream_len > 0, "Stream has length 0"
@@ -95,8 +95,7 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         # Construct channel IDs if not provided
         entry_data = self._client.xrange(stream_name, count=1)[0][1]
         data_size = np.frombuffer(entry_data[data_key], dtype=dtype).size
-        assert data_size % frames_per_entry == 0, \
-            "Size of Redis array must be multiple of frames_per_entry"
+        assert data_size % frames_per_entry == 0, "Size of Redis array must be multiple of frames_per_entry"
         channel_count = data_size // frames_per_entry
         if channel_ids is None:
             channel_ids = np.arange(channel_count, dtype=int).tolist()
