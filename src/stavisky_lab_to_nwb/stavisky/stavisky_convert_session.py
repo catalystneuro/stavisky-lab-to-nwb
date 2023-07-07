@@ -42,9 +42,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 stream_name="continuousNeural",
                 data_key="samples",
                 dtype="int16",
-                channel_count=256,
                 frames_per_entry=30,
-                start_time=start_time,
                 timestamp_source="redis",
                 timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
                 gain_to_uv=100.0,
@@ -56,7 +54,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
         dict(
             Recording=dict(
                 iterator_opts=dict(
-                    buffer_gb=1.0,  # may need to reduce depending on machine
+                    buffer_gb=0.1,  # may need to reduce depending on machine
                 )
             )
         )

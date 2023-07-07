@@ -23,10 +23,9 @@ class RedisExtractorMixin:
         self,
         stream_name: str,
         frames_per_entry: int = 1,
-        start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
         timestamp_source: Optional[Union[bytes, str]] = None,
-        timestamp_unit: Optional[Literal["s", "ms", "us"]] = None,
+        timestamp_conversion: float = 1.,
         timestamp_encoding: Optional[Literal["str", "buffer"]] = None,
         timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
         chunk_size: int = 1000,
@@ -44,12 +43,6 @@ class RedisExtractorMixin:
         frames_per_entry : int, default: 1
             Number of frames (i.e. a single time point) contained within
             each Redis stream entry
-        start_time : float, optional
-            Reference start time for timestamps, in seconds. The start time
-            should be in the same time basis as the timestamps, so that
-            when the start time is subtracted from the timestamps, a timestamp
-            of 0 corresponds to the beginning of the session. If not provided,
-            the start time is assumed to be equal to the first timestamp
         sampling_frequency : float, optional
             The sampling frequency of the data in Hz. If both `start_time` and
             `sampling_frequency` are provided, the timestamps are directly
@@ -61,10 +54,9 @@ class RedisExtractorMixin:
             Otherwise, the timestamp source is assumed to be a data key present
             in each entry. If not provided, `start_time` and `sampling_frequency`
             must be specified for timestamps to be constructed
-        timestamp_unit : {"s", "ms", "us"}, optional
-            If `timestamp_source` is a Redis entry data key, then the unit for
-            the timestamp information must be provided to scale the timestamps
-            to seconds
+        timestamp_conversion : float, default: 1
+            If `timestamp_source` is a Redis entry data key, then the user should
+            provide the conversion factor needed to scale the timestamps to seconds
         timestamp_encoding : {"string", "buffer"}, optional
             If `timestamp_source` is a Redis entry data key, then how the
             timestamp is stored must be specified. If the encoding is "string",
@@ -113,7 +105,7 @@ class RedisExtractorMixin:
         num_entries = self._client.xlen(stream_name)
 
         # get timestamps if already calculable
-        if (start_time is not None) and (sampling_frequency is not None):
+        if (sampling_frequency is not None):
             timestamps = np.arange(num_entries * frames_per_entry, dtype=np.float64) / sampling_frequency
             build_timestamps = False
         else:
@@ -123,11 +115,11 @@ class RedisExtractorMixin:
         if build_timestamps:
             assert timestamp_source is not None
             if safe_decode(timestamp_source).lower() == "redis":
-                timestamp_unit = "ms"
+                timestamp_conversion = 1e-3
             else:
                 assert timestamp_encoding is not None
                 assert timestamp_dtype is not None
-                assert timestamp_unit is not None
+                assert timestamp_conversion is not None
                 if not isinstance(timestamp_source, bytes):
                     timestamp_source = bytes(timestamp_source, "utf-8")
             timestamps = np.full((num_entries * frames_per_entry,), np.nan, dtype=np.float64)
@@ -153,7 +145,7 @@ class RedisExtractorMixin:
                     if safe_decode(timestamp_source).lower() == "redis":
                         # duplicate stream id as timestamp for each frame in entry
                         entry_timestamps = np.full(
-                            (frames_per_entry,), float(safe_decode(entry[0]).split("-")[0]), dtype=np.float64
+                            (frames_per_entry,), float(safe_decode(entry[0]).split("-")[0]), dtype=np.float128
                         )
                         assert entry_timestamps[0] >= last_ts  # sanity check for monotonic increasing ts
                         last_ts = entry_timestamps[0]
@@ -164,7 +156,7 @@ class RedisExtractorMixin:
                             entry_timestamps = np.full(
                                 (frames_per_entry,),
                                 timestamp_dtype(safe_decode(entry[1][timestamp_source])),
-                                dtype=np.float64,
+                                dtype=np.float128,
                             )
                         elif timestamp_encoding == "buffer":
                             # byte buffer reading, with duplicating timestamp if only one
@@ -176,14 +168,11 @@ class RedisExtractorMixin:
                                     f"Unexpected shape for timestamps of entry {entry[0]}. "
                                     + f"Expected: (1,) or ({frames_per_entry},). Found: {entry_timestamps.shape}"
                                 )
+                            entry_timestamps = entry_timestamps.astype(np.float128, copy=False)
                         assert np.all(entry_timestamps > last_ts)  # sanity check for monotonic increasing ts
                         last_ts = entry_timestamps[-1]
                     # convert to seconds and subtract start time
-                    if timestamp_unit == "ms":
-                        entry_timestamps *= 1e-3
-                    elif timestamp_unit == "us":
-                        entry_timestamps *= 1e-6
-                    entry_timestamps -= start_time or 0.0
+                    entry_timestamps *= timestamp_conversion
                     # add timestamps to array
                     timestamps[(count * frames_per_entry) : ((count + 1) * frames_per_entry)] = entry_timestamps
                     count += 1
@@ -197,11 +186,6 @@ class RedisExtractorMixin:
         if build_timestamps:
             assert not np.any(np.isnan(timestamps))
 
-        # get start time if necessary
-        if start_time is None:
-            start_time = timestamps[0]
-            timestamps -= start_time
-
         # "smooth" timestamps if desired and
         if build_timestamps:
             if smoothing_window != 1:
@@ -212,14 +196,6 @@ class RedisExtractorMixin:
                     stride_len=smoothing_stride,
                     causal_check=smoothing_causal_check,
                 )
-                if timestamps[0] < 0:
-                    warn(
-                        "After smoothing, some timestamps precede start time. "
-                        + f"Start time: {start_time}. Earliest timestamp: {start_time + timestamp[0]}. "
-                        + "Adjusting start time to earliest timestamp..."
-                    )
-                    start_time += timestamps[0]
-                    timestamps -= timestamps[0]
 
         # compute frequency and period if necessary
         if sampling_frequency is None:
@@ -227,7 +203,7 @@ class RedisExtractorMixin:
 
         assert np.all(timestamps >= 0.0)  # sanity check
 
-        return start_time, sampling_frequency, timestamps, entry_ids
+        return sampling_frequency, timestamps, entry_ids
 
     def smooth_timestamps(
         timestamps: np.ndarray,
@@ -290,7 +266,7 @@ class RedisExtractorMixin:
         # pad data
         front_pad_len = window_len // 2
         back_pad_len = window_len // 2 - int((window_len % 2) == 0)
-        ts_diff_padded = np.empty(ts_diff.size + front_pad_len + back_pad_len, dtype=np.float32)
+        ts_diff_padded = np.empty(ts_diff.size + front_pad_len + back_pad_len, dtype=np.float64)
         ts_diff_padded[front_pad_len:-back_pad_len] = ts_diff
         pad_view = np.flip(ts_diff.reshape(-1, frames_per_entry), axis=0)
         ts_diff_padded[:front_pad_len] = pad_view.flat[-front_pad_len:]
@@ -311,7 +287,7 @@ class RedisExtractorMixin:
             smoothed_diff = np.repeat(smoothed_diff, stride_len)
 
         # build timestamps and align with original end
-        smoothed_timestamps = np.empty(timestamps.shape, dtype=np.float64)
+        smoothed_timestamps = np.empty(timestamps.shape, dtype=np.float128)
         # (assume first entry is same as second)
         smoothed_timestamps[:frames_per_entry] = np.cumsum(smoothed_diff[:frames_per_entry])
         smoothed_timestamps[frames_per_entry:] = np.cumsum(smoothed_diff) + smoothed_timestamps[frames_per_entry - 1]
