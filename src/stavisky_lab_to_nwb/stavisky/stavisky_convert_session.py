@@ -99,8 +99,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    date = datetime.datetime.fromtimestamp(session_start_time).astimezone(
-        tz=ZoneInfo("US/Pacific"))
+    date = datetime.datetime.fromtimestamp(session_start_time).astimezone(tz=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
 
     # Add subject ID
