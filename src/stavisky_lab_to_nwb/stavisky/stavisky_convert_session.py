@@ -34,8 +34,31 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     conversion_options = dict()
 
     # Add Recording
-    # source_data.update(dict(Recording=dict(port=port, host=host)))
-    # conversion_options.update(dict(Recording=dict()))
+    source_data.update(
+        dict(
+            Recording=dict(
+                port=port,
+                host=host,
+                stream_name="continuousNeural",
+                data_key="samples",
+                dtype="int16",
+                frames_per_entry=30,
+                timestamp_source="redis",
+                timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
+                gain_to_uv=100.0,
+                channel_dim=1,
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            Recording=dict(
+                iterator_opts=dict(
+                    buffer_gb=0.1,  # may need to reduce depending on machine
+                )
+            )
+        )
+    )
 
     # Add Sorting
     # source_data.update(dict(Sorting=dict()))
@@ -131,7 +154,7 @@ if __name__ == "__main__":
     # Parameters for conversion
     port = 6379
     host = "localhost"
-    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_sbp/").expanduser()
+    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_recording/").expanduser()
     stub_test = False
 
     session_to_nwb(

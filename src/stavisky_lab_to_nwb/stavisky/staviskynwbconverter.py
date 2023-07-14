@@ -10,7 +10,7 @@ from stavisky_lab_to_nwb.stavisky import (
     StaviskyDecodedTextInterface,
     StaviskySpikingBandPowerInterface,
     # RedisSortingInterface,
-    # RedisRecordingInterface,
+    StaviskyRecordingInterface,
     StaviskyTrialsInterface,
 )
 
@@ -19,7 +19,7 @@ class StaviskyNWBConverter(NWBConverter):
     """Primary conversion class for my extracellular electrophysiology dataset."""
 
     data_interface_classes = dict(
-        # Recording=RedisRecordingInterface,
+        Recording=StaviskyRecordingInterface,
         # Sorting=RedisSortingInterface,
         Trials=StaviskyTrialsInterface,
         SpikingBandPower1ms=StaviskySpikingBandPowerInterface,
@@ -39,5 +39,6 @@ class StaviskyNWBConverter(NWBConverter):
 
     def temporally_align_data_interfaces(self):
         if self.session_start_time != 0.0:
+            self.data_interface_objects["Recording"].set_aligned_starting_time(-self.session_start_time)
             self.data_interface_objects["SpikingBandPower1ms"].set_aligned_starting_time(-self.session_start_time)
             self.data_interface_objects["SpikingBandPower20ms"].set_aligned_starting_time(-self.session_start_time)
