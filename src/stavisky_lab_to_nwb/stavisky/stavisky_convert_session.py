@@ -18,6 +18,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
     # Extract session metadata
     rdb_metadata = r.xrange("metadata")[0][1]
+    session_start_time = np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()
 
     # Prepare output path
     output_dir_path = Path(output_dir_path)
@@ -94,13 +95,12 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     source_data.update(dict(DecodedText=dict(port=port, host=host)))
     conversion_options.update(dict(DecodedText=dict()))
 
-    converter = StaviskyNWBConverter(source_data=source_data)
+    converter = StaviskyNWBConverter(source_data=source_data, session_start_time=session_start_time)
 
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    date = datetime.datetime.fromtimestamp(
-        np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()
-    ).astimezone(tz=ZoneInfo("US/Pacific"))
+    date = datetime.datetime.fromtimestamp(session_start_time).astimezone(
+        tz=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
 
     # Add subject ID
