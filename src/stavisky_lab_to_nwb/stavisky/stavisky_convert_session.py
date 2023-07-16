@@ -18,7 +18,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
     # Extract session metadata
     rdb_metadata = r.xrange("metadata")[0][1]
-    start_time = np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()
+    session_start_time = np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()
 
     # Prepare output path
     output_dir_path = Path(output_dir_path)
@@ -42,9 +42,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 stream_name="continuousNeural",
                 data_key="samples",
                 dtype="int16",
-                channel_count=256,
                 frames_per_entry=30,
-                start_time=start_time,
                 timestamp_source="redis",
                 timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
                 gain_to_uv=100.0,
@@ -56,7 +54,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
         dict(
             Recording=dict(
                 iterator_opts=dict(
-                    buffer_gb=1.0,  # may need to reduce depending on machine
+                    buffer_gb=0.1,  # may need to reduce depending on machine
                 )
             )
         )
@@ -89,6 +87,50 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
         )
     )
 
+    # Add SpikingBandPower 1 ms resolution
+    source_data.update(
+        dict(
+            SpikingBandPower1ms=dict(
+                port=port,
+                host=host,
+                stream_name="neuralFeatures_1ms",
+                data_key="spike_band_power",
+                ts_key="spiking_band_power_1ms",
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            SpikingBandPower1ms=dict(
+                stub_test=stub_test,
+                smooth_timestamps=True,
+                chunk_size=10000,
+            )
+        )
+    )
+
+    # Add SpikingBandPower 20 ms resolution
+    source_data.update(
+        dict(
+            SpikingBandPower20ms=dict(
+                port=port,
+                host=host,
+                stream_name="binnedFeatures_20ms",
+                data_key="spike_band_power_bin",
+                ts_key="spiking_band_power_20ms",
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            SpikingBandPower20ms=dict(
+                stub_test=stub_test,
+                smooth_timestamps=True,
+                chunk_size=1000,
+            )
+        )
+    )
+
     # Add Trials
     source_data.update(dict(Trials=dict(port=port, host=host)))
     conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
@@ -99,11 +141,11 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     source_data.update(dict(DecodedText=dict(port=port, host=host)))
     conversion_options.update(dict(DecodedText=dict()))
 
-    converter = StaviskyNWBConverter(source_data=source_data)
+    converter = StaviskyNWBConverter(source_data=source_data, session_start_time=session_start_time)
 
     # Add datetime to conversion
     metadata = converter.get_metadata()
-    date = datetime.datetime.fromtimestamp(start_time).astimezone(tz=ZoneInfo("US/Pacific"))
+    date = datetime.datetime.fromtimestamp(session_start_time).astimezone(tz=ZoneInfo("US/Pacific"))
     metadata["NWBFile"]["session_start_time"] = date
 
     # Add subject ID

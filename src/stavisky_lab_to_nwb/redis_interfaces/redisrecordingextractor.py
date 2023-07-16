@@ -17,10 +17,8 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         stream_name: str,
         data_key: Union[bytes, str],
         dtype: Union[str, type, np.dtype],
-        channel_count: int,
         channel_ids: Optional[list] = None,
         frames_per_entry: int = 1,
-        start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
         timestamp_source: Optional[Union[bytes, str]] = None,
         timestamp_kwargs: dict = {},
@@ -43,8 +41,6 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         dtype : str, type, or numpy.dtype
             The dtype of the data. Assumed to be a numeric type
             recognized by numpy, e.g. int8, float32, etc.
-        channel_count : int
-            Number of recording channels
         channel_ids : list, optional
             List of ids for each channel
         frames_per_entry : int, default: 1
@@ -61,8 +57,8 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
             stream. See `RedisExtractorMixin`
         timestamp_kwargs : dict, default: {}
             If timestamp source is not "redis", then timestamp_kwargs
-            must contain the unit, dtype, and encoding of the timestamp
-            data, and optionally smoothing parameters. See
+            must contain the conversion factor, dtype, and encoding of
+            the timestamp data, and optionally smoothing parameters. See
             `RedisExtractorMixin.get_ids_and_timestamps()`
         gain_to_uv : float, optional
             Scaling necessary to convert the recording values to
@@ -82,21 +78,27 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         )
         self._client.ping()
 
-        # Construct channel IDs if not provided
-        if channel_ids is None:
-            channel_ids = np.arange(channel_count, dtype=int).tolist()
-
-        # get entry IDs and timestamps
+        # check args and data validity
         stream_len = self._client.xlen(stream_name)
         assert stream_len > 0, "Stream has length 0"
-        start_time, sampling_frequency, timestamps, entry_ids = self.get_ids_and_timestamps(
+        data_key = bytes(data_key, "utf-8") if isinstance(data_key, str) else data_key
+
+        # get entry IDs and timestamps
+        sampling_frequency, timestamps, entry_ids = self.get_ids_and_timestamps(
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
-            start_time=start_time,
             sampling_frequency=sampling_frequency,
             timestamp_source=timestamp_source,
             **timestamp_kwargs,
         )
+
+        # Construct channel IDs if not provided
+        entry_data = self._client.xrange(stream_name, count=1)[0][1]
+        data_size = np.frombuffer(entry_data[data_key], dtype=dtype).size
+        assert data_size % frames_per_entry == 0, "Size of Redis array must be multiple of frames_per_entry"
+        channel_count = data_size // frames_per_entry
+        if channel_ids is None:
+            channel_ids = np.arange(channel_count, dtype=int).tolist()
 
         # Initialize Recording and RecordingSegment
         # NOTE: does not support multiple segments, assumes continuous recording for whole stream
@@ -110,7 +112,7 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
             timestamps=timestamps,
             entry_ids=entry_ids,
             frames_per_entry=frames_per_entry,
-            t_start=None,  # t_start != start_time
+            t_start=None,
             channel_dim=channel_dim,
         )
         self.add_recording_segment(recording_segment)
@@ -195,7 +197,7 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
 
         # save some variables
         self._stream_name = stream_name
-        self._data_key = bytes(data_key, "utf-8") if isinstance(data_key, str) else data_key
+        self._data_key = data_key
         self._channel_count = channel_count
         self._channel_dim = channel_dim
         self._dtype = dtype
