@@ -46,9 +46,6 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         frames_per_entry : int, default: 1
             Number of frames (i.e. a single time point) contained
             within each Redis stream entry
-        start_time : float, optional
-            Reference start time for timestamps, in seconds. See
-            `RedisExtractorMixin`
         sampling_frequency : float, optional
             The sampling frequency of the data in Hz. See
             `RedisExtractorMixin`
@@ -99,6 +96,8 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         channel_count = data_size // frames_per_entry
         if channel_ids is None:
             channel_ids = np.arange(channel_count, dtype=int).tolist()
+        else:
+            assert len(channel_ids) == channel_count, "Detected more channels than the number of channel IDS provided"
 
         # Initialize Recording and RecordingSegment
         # NOTE: does not support multiple segments, assumes continuous recording for whole stream
@@ -121,7 +120,7 @@ class RedisStreamRecordingExtractor(BaseRecording, RedisExtractorMixin):
         if gain_to_uv is not None:
             self.set_channel_gains(gain_to_uv)
 
-        # Not sure what this is for?
+        # Potential TODO: figure out what needs to be stored here
         self._kwargs = {
             "port": port,
             "host": host,

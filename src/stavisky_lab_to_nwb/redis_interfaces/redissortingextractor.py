@@ -17,10 +17,8 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         stream_name: str,
         data_key: Union[bytes, str],
         dtype: Union[str, type, np.dtype],
-        unit_count: int,
         unit_ids: Optional[list] = None,
         frames_per_entry: int = 1,
-        start_time: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
         timestamp_source: Optional[Union[bytes, str]] = None,
         timestamp_kwargs: dict = {},
@@ -49,9 +47,6 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         frames_per_entry : int, default: 1
             Number of frames (i.e. a single time point) contained
             within each Redis stream entry
-        start_time : float, optional
-            Reference start time for timestamps, in seconds. See
-            `RedisExtractorMixin`
         sampling_frequency : float, optional
             The sampling frequency of the data in Hz. See
             `RedisExtractorMixin`
@@ -78,21 +73,29 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         )
         self._client.ping()
 
-        # Construct unit IDs if not provided
-        if unit_ids is None:
-            unit_ids = np.arange(unit_count, dtype=int).tolist()
-
-        # get entry IDs and timestamps
+        # check args and data validity
         stream_len = self._client.xlen(stream_name)
         assert stream_len > 0, "Stream has length 0"
-        start_time, sampling_frequency, timestamps, entry_ids = self.get_ids_and_timestamps(
+        data_key = bytes(data_key, "utf-8") if isinstance(data_key, str) else data_key
+
+        # get entry IDs and timestamps
+        sampling_frequency, timestamps, entry_ids = self.get_ids_and_timestamps(
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
-            start_time=start_time,
             sampling_frequency=sampling_frequency,
             timestamp_source=timestamp_source,
             **timestamp_kwargs,
         )
+
+        # Construct unit IDs if not provided
+        entry_data = self._client.xrange(stream_name, count=1)[0][1]
+        data_size = np.frombuffer(entry_data[data_key], dtype=dtype).size
+        assert data_size % frames_per_entry == 0, "Size of Redis array must be multiple of frames_per_entry"
+        unit_count = data_size // frames_per_entry
+        if unit_ids is None:
+            unit_ids = np.arange(unit_count, dtype=int).tolist()
+        else:
+            assert len(unit_ids) == unit_count, "Detected more units than the number of unit IDS provided"
 
         # Initialize Sorting and SortingSegment
         # NOTE: does not support multiple segments, assumes continuous recording for whole stream
@@ -106,12 +109,12 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             entry_ids=entry_ids,
             frames_per_entry=frames_per_entry,
             timestamps=timestamps,
-            t_start=None,  # t_start != start_time
+            t_start=None,
             unit_dim=unit_dim,
         )
         self.add_sorting_segment(sorting_segment)
 
-        # Not sure what this is for?
+        # Potential TODO: figure out what needs to be stored here
         self._kwargs = {
             "port": port,
             "host": host,
@@ -133,6 +136,9 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         return_times: bool = False,
     ):
         """Get spike train for a particular unit.
+        Overriding base class method so that timestamps can
+        also come from time vector instead of only start
+        time and sampling frequency.
 
         Parameters
         ----------
@@ -219,7 +225,7 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
 
             if with_warning:
                 warn(
-                    "Setting times with Recording.set_times() is not recommended because "
+                    "Setting times with Sorting.set_times() is not recommended because "
                     "times are not always propagated to across preprocessing"
                     "Use use this carefully!"
                 )

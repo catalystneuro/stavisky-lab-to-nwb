@@ -69,9 +69,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 stream_name="neuralFeatures_1ms",
                 data_key="threshold_crossings",
                 dtype="int16",
-                unit_count=256,
                 frames_per_entry=1,
-                start_time=start_time,
                 timestamp_source="redis",
                 timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
             )
@@ -81,7 +79,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
         dict(
             Sorting=dict(
                 units_description=(
-                    "Unsorted threshold crossings binned at 1 ms resolution " "for each recording channel."
+                    "Unsorted threshold crossings binned at 1 ms resolution for each recording channel."
                 )
             )
         )
