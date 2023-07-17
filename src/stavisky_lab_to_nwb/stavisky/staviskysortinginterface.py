@@ -58,9 +58,9 @@ class StaviskySortingInterface(RedisStreamSortingInterface):
             frames_per_entry=self.source_data.get("frames_per_entry", 1),
             sampling_frequency=self.source_data.get("sampling_frequency", None),
             timestamp_source=self.source_data.get("timestamp_source", None),
-            **self.source_data.get("timestamp_kwargs", dict())
+            **self.source_data.get("timestamp_kwargs", dict()),
         )[1]
-    
+
     def get_timestamps(self) -> np.ndarray:
         """
         Retrieve the timestamps for the data in this interface.
@@ -134,4 +134,3 @@ class StaviskySortingInterface(RedisStreamSortingInterface):
         self.set_aligned_timestamps(
             aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
         )
-
