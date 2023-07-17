@@ -99,7 +99,7 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
 
         # Initialize Sorting and SortingSegment
         # NOTE: does not support multiple segments, assumes continuous recording for whole stream
-        BaseSorting.__init__(self, unit_ids=unit_ids, sampling_frequency=sampling_frequency)
+        BaseSorting.__init__(self, unit_ids=unit_ids, sampling_frequency=float(sampling_frequency))
         sorting_segment = RedisStreamSortingSegment(
             client=self._client,
             stream_name=stream_name,
@@ -171,7 +171,7 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             return spike_frames
         else:
             segment = self._sorting_segments[segment_index]
-            times = segment.get_times()
+            times = segment.get_times().astype("float64")
             return times[spike_frames]
 
     def get_times(self, segment_index=None):

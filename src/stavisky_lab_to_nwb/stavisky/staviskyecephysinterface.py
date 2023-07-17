@@ -208,6 +208,8 @@ class StaviskySpikingBandPowerInterface(BaseTemporalAlignmentInterface):
         sbp = np.stack(sbp, axis=0)
 
         timestamps = self.get_timestamps().astype("float64")
+        if stub_test:
+            timestamps = timestamps[:len(sbp)]
         if smooth_timestamps:
             timestamps = np.linspace(timestamps[0], timestamps[-1], len(timestamps))
 

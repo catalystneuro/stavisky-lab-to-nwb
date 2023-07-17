@@ -55,7 +55,8 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
             Recording=dict(
                 iterator_opts=dict(
                     buffer_gb=0.1,  # may need to reduce depending on machine
-                )
+                ),
+                stub_test=stub_test,
             )
         )
     )
@@ -78,7 +79,8 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     conversion_options.update(
         dict(
             Sorting=dict(
-                units_description=("Unsorted threshold crossings binned at 1 ms resolution for each recording channel.")
+                units_description=("Unsorted threshold crossings binned at 1 ms resolution for each recording channel."),
+                stub_test=stub_test,
             )
         )
     )
@@ -99,7 +101,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
         dict(
             SpikingBandPower1ms=dict(
                 stub_test=stub_test,
-                smooth_timestamps=True,
+                smooth_timestamps=False,
                 chunk_size=10000,
             )
         )
@@ -121,7 +123,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
         dict(
             SpikingBandPower20ms=dict(
                 stub_test=stub_test,
-                smooth_timestamps=True,
+                smooth_timestamps=False,
                 chunk_size=1000,
             )
         )
