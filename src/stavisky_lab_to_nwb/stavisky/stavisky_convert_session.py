@@ -79,7 +79,9 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     conversion_options.update(
         dict(
             Sorting=dict(
-                units_description=("Unsorted threshold crossings binned at 1 ms resolution for each recording channel."),
+                units_description=(
+                    "Unsorted threshold crossings binned at 1 ms resolution for each recording channel."
+                ),
                 stub_test=stub_test,
             )
         )
