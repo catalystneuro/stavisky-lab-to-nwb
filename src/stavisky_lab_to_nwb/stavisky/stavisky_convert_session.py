@@ -55,14 +55,37 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
             Recording=dict(
                 iterator_opts=dict(
                     buffer_gb=0.1,  # may need to reduce depending on machine
-                )
+                ),
+                stub_test=stub_test,
             )
         )
     )
 
     # Add Sorting
-    # source_data.update(dict(Sorting=dict()))
-    # conversion_options.update(dict(Sorting=dict()))
+    source_data.update(
+        dict(
+            Sorting=dict(
+                port=port,
+                host=host,
+                stream_name="neuralFeatures_1ms",
+                data_key="threshold_crossings",
+                dtype="int16",
+                frames_per_entry=1,
+                timestamp_source="redis",
+                timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            Sorting=dict(
+                units_description=(
+                    "Unsorted threshold crossings binned at 1 ms resolution for each recording channel."
+                ),
+                stub_test=stub_test,
+            )
+        )
+    )
 
     # Add SpikingBandPower 1 ms resolution
     source_data.update(
@@ -80,7 +103,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
         dict(
             SpikingBandPower1ms=dict(
                 stub_test=stub_test,
-                smooth_timestamps=True,
+                smooth_timestamps=False,
                 chunk_size=10000,
             )
         )
@@ -102,7 +125,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
         dict(
             SpikingBandPower20ms=dict(
                 stub_test=stub_test,
-                smooth_timestamps=True,
+                smooth_timestamps=False,
                 chunk_size=1000,
             )
         )
@@ -154,7 +177,7 @@ if __name__ == "__main__":
     # Parameters for conversion
     port = 6379
     host = "localhost"
-    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_recording/").expanduser()
+    output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/stavisky_sorting/").expanduser()
     stub_test = False
 
     session_to_nwb(

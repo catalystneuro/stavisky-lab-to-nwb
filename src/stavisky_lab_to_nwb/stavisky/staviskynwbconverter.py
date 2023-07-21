@@ -9,7 +9,7 @@ from stavisky_lab_to_nwb.stavisky import (
     StaviskyPhonemeLogitsInterface,
     StaviskyDecodedTextInterface,
     StaviskySpikingBandPowerInterface,
-    # RedisSortingInterface,
+    StaviskySortingInterface,
     StaviskyRecordingInterface,
     StaviskyTrialsInterface,
 )
@@ -20,7 +20,7 @@ class StaviskyNWBConverter(NWBConverter):
 
     data_interface_classes = dict(
         Recording=StaviskyRecordingInterface,
-        # Sorting=RedisSortingInterface,
+        Sorting=StaviskySortingInterface,
         Trials=StaviskyTrialsInterface,
         SpikingBandPower1ms=StaviskySpikingBandPowerInterface,
         SpikingBandPower20ms=StaviskySpikingBandPowerInterface,
@@ -42,3 +42,7 @@ class StaviskyNWBConverter(NWBConverter):
             self.data_interface_objects["Recording"].set_aligned_starting_time(-self.session_start_time)
             self.data_interface_objects["SpikingBandPower1ms"].set_aligned_starting_time(-self.session_start_time)
             self.data_interface_objects["SpikingBandPower20ms"].set_aligned_starting_time(-self.session_start_time)
+            self.data_interface_objects["Sorting"].set_aligned_starting_time(-self.session_start_time)
+        # self.data_interface_objects["Sorting"].set_aligned_timestamps(
+        #     self.data_interface_objects["Recording"].get_timestamps()[::30]
+        # )
