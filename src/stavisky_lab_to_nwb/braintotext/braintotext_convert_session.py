@@ -48,7 +48,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 timestamp_kwargs=dict(
                     timestamp_dtype="int64",
                     timestamp_encoding="buffer",
-                    timestamp_conversion=1. / 3e4,
+                    timestamp_conversion=1.0 / 3e4,
                 ),
                 smoothing_kwargs=dict(
                     window_len="max",

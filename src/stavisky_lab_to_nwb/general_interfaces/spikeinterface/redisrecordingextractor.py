@@ -94,13 +94,10 @@ class RedisStreamRecordingExtractor(BaseRecording):
         )
         if smoothing_kwargs:
             timestamps = smooth_timestamps(
-                timestamps, 
-                frames_per_entry=frames_per_entry,
-                sampling_frequency=sampling_frequency, 
-                **smoothing_kwargs
+                timestamps, frames_per_entry=frames_per_entry, sampling_frequency=sampling_frequency, **smoothing_kwargs
             )
         if sampling_frequency is None:
-            sampling_frequency = np.round(1. / np.mean(np.diff(timestamps)), 8)
+            sampling_frequency = np.round(1.0 / np.mean(np.diff(timestamps)), 8)
 
         # Construct channel IDs if not provided
         entry = self._client.xrange(stream_name, count=1)[0][1]
@@ -111,10 +108,10 @@ class RedisStreamRecordingExtractor(BaseRecording):
             channel_ids = np.arange(channel_count, dtype=int).tolist()
         else:
             assert len(channel_ids) == channel_count, "Detected more channels than the number of channel IDS provided"
-        
+
         # set up data reading args
         shape = (frames_per_entry, channel_count) if channel_dim == 1 else (channel_count, frames_per_entry)
-        transpose = (channel_dim == 0)
+        transpose = channel_dim == 0
         data_kwargs = dict(encoding="buffer", shape=shape, transpose=transpose)
 
         # Initialize Recording and RecordingSegment
@@ -169,7 +166,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
                 "times are not always propagated to across preprocessing"
                 "Use use this carefully!"
             )
-    
+
     def get_entry_ids(self):
         segment_index = self._check_segment_index(segment_index)
         rs = self._recording_segments[segment_index]
@@ -249,7 +246,7 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
     def get_num_samples(self) -> int:
         """Returns number of samples in the segment"""
         return self._num_samples
-    
+
     def get_entry_ids(self):
         return self._entry_ids
 
@@ -300,10 +297,13 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         )
 
         # loop through, convert to numpy and stack
-        traces = np.concatenate([
-            read_entry(entry=entry[1], field=self._data_field, dtype=self._data_dtype, **self._data_kwargs) 
-            for entry in entries
-        ], axis=0)
+        traces = np.concatenate(
+            [
+                read_entry(entry=entry[1], field=self._data_field, dtype=self._data_dtype, **self._data_kwargs)
+                for entry in entries
+            ],
+            axis=0,
+        )
 
         # slicing operations
         if channel_indices is not None:

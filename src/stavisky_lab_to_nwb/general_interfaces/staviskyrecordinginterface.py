@@ -74,7 +74,7 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
             self.n_arrays = None
             self.n_electrodes_per_array = None
         r.close()
-        
+
         if self.n_arrays is not None and self.n_electrodes_per_array is not None:
             n_channels = self.recording_extractor.get_num_channels()
             if n_channels == self.n_arrays * self.n_electrodes_per_array:
@@ -111,7 +111,7 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
             host=self.source_data["host"],
         )
         r.ping()
-        
+
         # read timestamp data from redis
         entry_ids, redis_timestamps, nsp_timestamps = get_stream_ids_and_timestamps(
             client=r,
@@ -119,16 +119,16 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
             frames_per_entry=self.source_data.get("frames_per_entry", 1),
             timestamp_field=self.source_data.get("timestamp_field"),
             chunk_size=self.source_data.get("chunk_size", 10000),
-            **self.source_data.get("timestamp_kwargs", {})
+            **self.source_data.get("timestamp_kwargs", {}),
         )
         if self.source_data.get("smoothing_kwargs", {}):
             redis_timestamps = smooth_timestamps(
-                redis_timestamps, 
+                redis_timestamps,
                 frames_per_entry=self.source_data.get("frames_per_entry", 1),
-                sampling_frequency=self.source_data.get("sampling_frequency"), 
+                sampling_frequency=self.source_data.get("sampling_frequency"),
                 **self.source_data.get("smoothing_kwargs"),
             )
-        
+
         # close redis client
         r.close()
 
@@ -176,10 +176,12 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
             for segment_index in range(self._number_of_segments):
                 if nsp:
                     self.recording_extractor.set_nsp_times(
-                        times=aligned_timestamps[segment_index], segment_index=segment_index)
+                        times=aligned_timestamps[segment_index], segment_index=segment_index
+                    )
                 else:
                     self.recording_extractor.set_times(
-                        times=aligned_timestamps[segment_index], segment_index=segment_index)
-    
+                        times=aligned_timestamps[segment_index], segment_index=segment_index
+                    )
+
     def get_entry_ids(self):
         return self.recording_extractor.get_entry_ids()

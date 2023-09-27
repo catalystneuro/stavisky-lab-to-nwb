@@ -15,14 +15,14 @@ from stavisky_lab_to_nwb.utils.timestamps import get_stream_ids_and_timestamps, 
 
 class DualTimestampTemporalAlignmentInterface(BaseTemporalAlignmentInterface):
     """Abstract base class defining interface for dual-timestamp alignment functionality"""
-    
+
     @abstractmethod
     def get_original_timestamps(self) -> tuple[list[bytes], np.ndarray, Optional[np.ndarray]]:
         raise NotImplementedError(
             "Unable to retrieve the original unaltered timestamps for this interface! "
             "Define the `get_original_timestamps` method for this interface."
         )
-    
+
     @abstractmethod
     def get_timestamps(self, nsp: bool = False) -> np.ndarray:
         raise NotImplementedError(
@@ -34,39 +34,35 @@ class DualTimestampTemporalAlignmentInterface(BaseTemporalAlignmentInterface):
         raise NotImplementedError(
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
-    
+
     @abstractmethod
     def get_entry_ids(self):
-        raise NotImplementedError(
-            "The protocol for getting entry IDs of this interface has not been specified!"
-        )
+        raise NotImplementedError("The protocol for getting entry IDs of this interface has not been specified!")
 
     def set_aligned_starting_time(self, aligned_starting_time: float, nsp: bool = False) -> None:
         self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps(nsp=nsp) + aligned_starting_time, nsp=nsp)
 
     def align_by_interpolation(
-        self, 
-        unaligned_timestamps: np.ndarray, 
-        aligned_timestamps: np.ndarray,
-        nsp: bool = False
+        self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray, nsp: bool = False
     ) -> None:
         self.set_aligned_timestamps(
             aligned_timestamps=np.interp(
-                x=self.get_timestamps(nsp=nsp).astype("float64"), 
-                xp=unaligned_timestamps.astype("float64"), 
+                x=self.get_timestamps(nsp=nsp).astype("float64"),
+                xp=unaligned_timestamps.astype("float64"),
                 fp=aligned_timestamps.astype("float64"),
             ),
             nsp=nsp,
         )
-    
+
     def set_dtype(self, dtype, nsp: bool = False):
         self.set_aligned_timestamps(self.get_timestamps(nsp=nsp).astype(dtype))
 
 
 class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface):
     """Base class for interfaces to write data to NWB with two different time bases"""
+
     default_data_kwargs: dict = dict()
-    
+
     def __init__(
         self,
         port: int,
@@ -87,7 +83,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         chunk_size: Optional[int] = None,
     ):
         """Base class for dual timestamp handling
-        
+
         Parameters
         ----------
         port : int
@@ -125,7 +121,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         self.ts_key = ts_key
         self.data_kwargs = self.default_data_kwargs.copy()
         if "shape" not in self.data_kwargs:
-            self.data_kwargs["shape"] = (frames_per_entry, -1) # doesn't handle transposed data!
+            self.data_kwargs["shape"] = (frames_per_entry, -1)  # doesn't handle transposed data!
         if data_dtype is not None:
             data_kwargs["dtype"] = data_dtype
         self.data_kwargs.update(data_kwargs)
@@ -160,8 +156,8 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         Parameters
         ----------
         nsp_timestamp_source : bytes or str, optional
-            The source of the timestamp information in the Redis stream. By 
-            default, Redis timestamps are always read. If specified, 
+            The source of the timestamp information in the Redis stream. By
+            default, Redis timestamps are always read. If specified,
             the timestamp source is assumed to be a data key present
             in each entry and is saved as `_alt_timestamps`
         nsp_timestamp_conversion : float, default: 1
@@ -189,7 +185,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             host=self.source_data["host"],
         )
         r.ping()
-        
+
         # read timestamp data from redis
         entry_ids, redis_timestamps, nsp_timestamps = get_stream_ids_and_timestamps(
             client=r,
@@ -204,16 +200,16 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         )
         if smoothing_kwargs:
             redis_timestamps = smooth_timestamps(
-                redis_timestamps, 
-                frames_per_entry=frames_per_entry, 
+                redis_timestamps,
+                frames_per_entry=frames_per_entry,
                 **smoothing_kwargs,
             )
-        
+
         # close redis client
         r.close()
 
         return entry_ids, redis_timestamps, nsp_timestamps
-    
+
     def get_timestamps(self, nsp: bool = False) -> np.ndarray:
         return self._nsp_timestamps if nsp else self._timestamps
 
@@ -230,10 +226,10 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             if len(aligned_timestamps) != len(self._timestamps):
                 print("Warning: length of aligned timestamps != length of original timestamps")
             self._timestamps = aligned_timestamps
-    
+
     def get_entry_ids(self):
         return self._entry_ids
-    
+
     def set_timestamps_from_interface(
         self,
         interface: BaseTemporalAlignmentInterface,
@@ -242,7 +238,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         if isinstance(interface, DualTimestampTemporalAlignmentInterface):
             self._nsp_timestamps = interface.get_timestamps(nsp=True)
             self._entry_ids = interface.get_entry_ids()
-        
+
     def get_data_iterator(
         self,
         client: redis.Redis,
@@ -258,7 +254,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
 
         # set max read len if stub_test
         max_len = client.xlen(stream_name) // 4 if stub_test else np.inf
-        
+
         # make iterators
         if not use_chunk_iterator:
             data_dict = read_stream_fields(
@@ -279,15 +275,15 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
                 entry_ids=self._entry_ids,
                 read_kwargs=self.data_kwargs,
                 max_stream_len=max_len,
-                **iterator_opts
+                **iterator_opts,
             )
         return iterator
-    
+
     def add_to_processing_module(
         self,
         processing_module,
         data: Union[np.ndarray, RedisDataChunkIterator],
-        dataclass = TimeSeries,
+        dataclass=TimeSeries,
         dataclass_kwargs: dict = {},
         containerclass: Optional[MultiContainerInterface] = None,
         container_name: Optional[str] = None,
@@ -298,19 +294,19 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         if "name" in dataclass_kwargs:
             print("Ignoring `name` in `dataclass_kwargs`, using `ts_key` instead.")
             dataclass_kwargs.pop("name")
-        
+
         # get and truncate timestamps
         timestamps = self.get_timestamps()
         assert timestamps is not None, "Timestamps must be loaded before calling `add_to_processing_module()`"
         nsp_timestamps = self.get_timestamps(nsp=True)
         if stub_test:
-            timestamps = timestamps[:len(data)]
+            timestamps = timestamps[: len(data)]
             if nsp_timestamps is not None:
-                nsp_timestamps = nsp_timestamps[:len(data)]
+                nsp_timestamps = nsp_timestamps[: len(data)]
         assert len(timestamps) == len(data), "Timestamps and data have different lengths!"
         if nsp_timestamps is not None:
             assert len(nsp_timestamps) == len(data), "Timestamps and data have different lengths!"
-    
+
         # create timeseries objs
         data_to_add = []
         if nsp_timestamps is None or not save_dual_timestamps:
@@ -318,35 +314,34 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
                 name=self.ts_key,
                 data=H5DataIO(data, compression="gzip"),
                 timestamps=H5DataIO(timestamps, compression="gzip"),
-                **dataclass_kwargs
+                **dataclass_kwargs,
             )
             data_to_add.append(nwb_data)
         else:
             redis_dataclass_kwargs = dataclass_kwargs.copy()
-            redis_dataclass_kwargs['description'] = (
-                redis_dataclass_kwargs['description'].strip() +
-                " Aligned with real-time packet write time."
+            redis_dataclass_kwargs["description"] = (
+                redis_dataclass_kwargs["description"].strip() + " Aligned with real-time packet write time."
             )
             redis_nwb_data = dataclass(
                 name=self.ts_key + "_realtime",
                 data=H5DataIO(data, compression="gzip"),
                 timestamps=H5DataIO(timestamps, compression="gzip"),
-                **redis_dataclass_kwargs
+                **redis_dataclass_kwargs,
             )
             data_to_add.append(redis_nwb_data)
             nsp_dataclass_kwargs = dataclass_kwargs.copy()
-            nsp_dataclass_kwargs['description'] = (
-                nsp_dataclass_kwargs['description'].strip() +
-                " Aligned with recording nsp timestamps at the start of each bin."
+            nsp_dataclass_kwargs["description"] = (
+                nsp_dataclass_kwargs["description"].strip()
+                + " Aligned with recording nsp timestamps at the start of each bin."
             )
             nsp_nwb_data = dataclass(
                 name=self.ts_key + "_nsp",
                 data=redis_nwb_data,
                 timestamps=H5DataIO(nsp_timestamps, compression="gzip"),
-                **nsp_dataclass_kwargs
+                **nsp_dataclass_kwargs,
             )
             data_to_add.append(nsp_nwb_data)
-        
+
         # add to container if provided
         if containerclass is not None:
             if container_name in processing_module.data_interfaces:
@@ -354,7 +349,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             else:
                 container = containerclass(name=container_name)
                 processing_module.add(container)
-            container_add = getattr(container, container.__clsconf__.get('add'))
+            container_add = getattr(container, container.__clsconf__.get("add"))
             for data in data_to_add:
                 container_add(data)
         # else add to proc module
