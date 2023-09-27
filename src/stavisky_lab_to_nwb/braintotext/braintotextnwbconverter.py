@@ -9,6 +9,7 @@ from stavisky_lab_to_nwb.braintotext import (
     BrainToTextPhonemeLogitsInterface,
     BrainToTextDecodedTextInterface,
     BrainToTextTrialsInterface,
+    BrainToTextAudioInterface,
 )
 
 
@@ -21,6 +22,7 @@ class BrainToTextNWBConverter(NWBConverter):
         # Trials=StaviskyTrialsInterface,
         # SpikingBandPower1ms=StaviskySpikingBandPowerInterface,
         # SpikingBandPower20ms=StaviskySpikingBandPowerInterface,
+        Audio=BrainToTextAudioInterface,
         PhonemeLogits=BrainToTextPhonemeLogitsInterface,
         DecodedText=BrainToTextDecodedTextInterface,
     )
@@ -35,12 +37,12 @@ class BrainToTextNWBConverter(NWBConverter):
         self.session_start_time = session_start_time
 
     def temporally_align_data_interfaces(self):
-        pass
-        # if self.session_start_time != 0.0:
-        #     self.data_interface_objects["Recording"].set_aligned_starting_time(-self.session_start_time)
-        #     self.data_interface_objects["SpikingBandPower1ms"].set_aligned_starting_time(-self.session_start_time)
-        #     self.data_interface_objects["SpikingBandPower20ms"].set_aligned_starting_time(-self.session_start_time)
-        #     self.data_interface_objects["Sorting"].set_aligned_starting_time(-self.session_start_time)
-        # self.data_interface_objects["Sorting"].set_aligned_timestamps(
-        #     self.data_interface_objects["Recording"].get_timestamps()[::30]
-        # )
+        # initialize common clock variables
+        redis_analog_clock = None
+        nsp_analog_clock = None
+        # align audio start to session start time
+        if "Audio" in self.data_interface_objects:
+            redis_analog_clock = self.data_interface_objects["Audio"].get_timestamps(nsp=False)
+            redis_analog_clock = (redis_analog_clock - self.session_start_time).astype("float64")
+            nsp_analog_clock = self.data_interface_objects["Audio"].get_timestamps(nsp=True).astype("float64")
+            self.data_interface_objects["Audio"].set_aligned_timestamps(redis_analog_clock, nsp=False)

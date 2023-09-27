@@ -1,3 +1,4 @@
 from .braintotextdecodinginterface import BrainToTextPhonemeLogitsInterface, BrainToTextDecodedTextInterface
 from .braintotexttrialsinterface import BrainToTextTrialsInterface
+from .braintotextaudiointerface import BrainToTextAudioInterface
 from .braintotextnwbconverter import BrainToTextNWBConverter
