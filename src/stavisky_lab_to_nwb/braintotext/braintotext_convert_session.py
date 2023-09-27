@@ -18,7 +18,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
 
     # Extract session metadata
     rdb_metadata = r.xrange("metadata")[0][1]
-    session_start_time = np.frombuffer(rdb_metadata[b"startTime"], dtype=np.float64).item()
+    session_start_time = np.frombuffer(rdb_metadata[b"startTime"], dtype=np.int64).astype(float).item()
 
     # Prepare output path
     output_dir_path = Path(output_dir_path)
@@ -132,8 +132,8 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     # )
 
     # Add Trials
-    # source_data.update(dict(Trials=dict(port=port, host=host)))
-    # conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
+    source_data.update(dict(Trials=dict(port=port, host=host)))
+    conversion_options.update(dict(Trials=dict()))
 
     # Add Decoding
     source_data.update(dict(PhonemeLogits=dict(port=port, host=host)))
