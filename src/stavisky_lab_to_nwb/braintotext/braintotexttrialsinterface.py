@@ -44,7 +44,7 @@ class BrainToTextTrialsInterface(TimeIntervalsInterface):
         )
 
         return metadata
-    
+
     def _read_file(
         self,
         port: int,
@@ -53,7 +53,7 @@ class BrainToTextTrialsInterface(TimeIntervalsInterface):
         # Instantiate Redis client and check connection
         r = redis.Redis(port=port, host=host)
         r.ping()
-        
+
         # Extract trial information
         trial_info = r.xrange("trial_info")
         final_decoded_sentence = r.xrange("tts_final_decoded_sentence")
@@ -67,27 +67,35 @@ class BrainToTextTrialsInterface(TimeIntervalsInterface):
         trial_ids = []
         for n, (timestamp, trial) in enumerate(trial_info):
             trial_ids.append(int(trial[b"trial_num"]))
-            trial_list.append({
-                "start_time": np.frombuffer(trial[b"trial_start_redis_time"], dtype=np.int64).item() / 1.0e3,
-                "stop_time": np.frombuffer(trial[b"trial_end_redis_time"], dtype=np.int64).item() / 1.0e3,
-                "go_cue_time": np.frombuffer(trial[b"go_cue_redis_time"], dtype=np.int64).item() / 1.0e3,
-                "delay_duration": float(trial[b"delay_duration"]),
-                "inter_trial_duration": float(trial[b"inter_trial_duration"]),
-                "sentence_cue": trial[b"cue"].decode("utf-8"),
-                "ended_with_pause": int(trial[b"ended_with_pause"]),
-                "ended_with_timeout": int(trial[b"ended_with_timeout"]),
-                "start_nsp_neural_time": np.frombuffer(trial[b"trial_start_nsp_neural_time"], dtype=np.int64).item() / 3.0e4,
-                "start_nsp_analog_time": np.frombuffer(trial[b"trial_start_nsp_analog_time"], dtype=np.int64).item() / 1.0e9,
-                "go_cue_nsp_neural_time": np.frombuffer(trial[b"go_cue_nsp_neural_time"], dtype=np.int64).item() / 3.0e4,
-                "go_cue_nsp_analog_time": np.frombuffer(trial[b"go_cue_nsp_analog_time"], dtype=np.int64).item() / 1.0e9,
-                "stop_nsp_neural_time": np.frombuffer(trial[b"trial_end_nsp_neural_time"], dtype=np.int64).item() / 3.0e4,
-                "stop_nsp_analog_time": np.frombuffer(trial[b"trial_end_nsp_analog_time"], dtype=np.int64).item() / 1.0e9,
-                "decoded_sentence": final_decoded_sentence[n][1][b'final_decoded_sentence'].decode("utf-8"),
-                "tts_stop_time": int(tts_info[n][0].decode("utf-8").split('-')[0]) / 1.0e3,
-            })
-        
+            trial_list.append(
+                {
+                    "start_time": np.frombuffer(trial[b"trial_start_redis_time"], dtype=np.int64).item() / 1.0e3,
+                    "stop_time": np.frombuffer(trial[b"trial_end_redis_time"], dtype=np.int64).item() / 1.0e3,
+                    "go_cue_time": np.frombuffer(trial[b"go_cue_redis_time"], dtype=np.int64).item() / 1.0e3,
+                    "delay_duration": float(trial[b"delay_duration"]),
+                    "inter_trial_duration": float(trial[b"inter_trial_duration"]),
+                    "sentence_cue": trial[b"cue"].decode("utf-8"),
+                    "ended_with_pause": int(trial[b"ended_with_pause"]),
+                    "ended_with_timeout": int(trial[b"ended_with_timeout"]),
+                    "start_nsp_neural_time": np.frombuffer(trial[b"trial_start_nsp_neural_time"], dtype=np.int64).item()
+                    / 3.0e4,
+                    "start_nsp_analog_time": np.frombuffer(trial[b"trial_start_nsp_analog_time"], dtype=np.int64).item()
+                    / 1.0e9,
+                    "go_cue_nsp_neural_time": np.frombuffer(trial[b"go_cue_nsp_neural_time"], dtype=np.int64).item()
+                    / 3.0e4,
+                    "go_cue_nsp_analog_time": np.frombuffer(trial[b"go_cue_nsp_analog_time"], dtype=np.int64).item()
+                    / 1.0e9,
+                    "stop_nsp_neural_time": np.frombuffer(trial[b"trial_end_nsp_neural_time"], dtype=np.int64).item()
+                    / 3.0e4,
+                    "stop_nsp_analog_time": np.frombuffer(trial[b"trial_end_nsp_analog_time"], dtype=np.int64).item()
+                    / 1.0e9,
+                    "decoded_sentence": final_decoded_sentence[n][1][b"final_decoded_sentence"].decode("utf-8"),
+                    "tts_stop_time": int(tts_info[n][0].decode("utf-8").split("-")[0]) / 1.0e3,
+                }
+            )
+
         return pd.DataFrame([trial_list[i] for i in np.argsort(trial_ids)])
-        
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -119,8 +127,8 @@ class BrainToTextTrialsInterface(TimeIntervalsInterface):
         )
 
     def set_aligned_starting_time(
-        self, 
-        aligned_starting_time: float, 
+        self,
+        aligned_starting_time: float,
         clock: Optional[Literal["redis", "nsp_neural", "nsp_analog"]] = None,
     ):
         if clock is not None:
@@ -130,8 +138,8 @@ class BrainToTextTrialsInterface(TimeIntervalsInterface):
         include_clock = (clock or "") + "_time"
         exclude_clock = set(["nsp_neural", "nsp_analog"]) - set([clock])
         timing_columns = [
-            column 
-            for column in self.dataframe.columns 
+            column
+            for column in self.dataframe.columns
             if (column.endswith(include_clock) and not any([clock_name in column for clock_name in exclude_clock]))
         ]
 
@@ -139,9 +147,9 @@ class BrainToTextTrialsInterface(TimeIntervalsInterface):
             self.dataframe[column] += aligned_starting_time
 
     def align_by_interpolation(
-        self, 
-        unaligned_timestamps: np.ndarray, 
-        aligned_timestamps: np.ndarray, 
+        self,
+        unaligned_timestamps: np.ndarray,
+        aligned_timestamps: np.ndarray,
         clock: Optional[Literal["redis", "nsp_neural", "nsp_analog"]] = None,
     ):
         if clock is not None:
@@ -151,17 +159,14 @@ class BrainToTextTrialsInterface(TimeIntervalsInterface):
         include_clock = (clock or "") + "_time"
         exclude_clock = set(["nsp_neural", "nsp_analog"]) - set([clock])
         timing_columns = [
-            column 
-            for column in self.dataframe.columns 
+            column
+            for column in self.dataframe.columns
             if (column.endswith(include_clock) and not any([clock_name in column for clock_name in exclude_clock]))
         ]
-        
+
         for column in timing_columns:
             super().align_by_interpolation(
                 unaligned_timestamps=unaligned_timestamps,
                 aligned_timestamps=aligned_timestamps,
                 column=column,
             )
-        
-    
-    
