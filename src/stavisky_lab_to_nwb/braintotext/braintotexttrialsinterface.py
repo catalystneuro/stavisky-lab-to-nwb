@@ -9,7 +9,7 @@ from pynwb import NWBFile
 from neuroconv.basedatainterface import BaseDataInterface
 
 
-class StaviskyTrialsInterface(BaseDataInterface):
+class BrainToTextTrialsInterface(BaseDataInterface):
     """Trials interface for simulated_data conversion"""
 
     def __init__(

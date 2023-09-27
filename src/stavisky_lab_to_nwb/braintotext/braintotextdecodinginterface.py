@@ -10,7 +10,7 @@ from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools.nwb_helpers import get_module
 
 
-class StaviskyPhonemeLogitsInterface(BaseDataInterface):
+class BrainToTextPhonemeLogitsInterface(BaseDataInterface):
     """Decoding phoneme logits interface for Stavisky Redis conversion"""
 
     def __init__(
@@ -24,7 +24,6 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        smooth_timestamps: bool = False,  # TODO: removal/modification pending timestamp meeting
     ):
         # initialize redis client and check connection
         r = redis.Redis(
@@ -50,14 +49,9 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
             if b"start" in entry[1].keys():  # start of trial decoding period
                 trial_logits = []
             elif b"end" in entry[1].keys():  # end of trial decoding period
-                if smooth_timestamps:  # interpolate timestamps to be regular, if desired
-                    start_time = int(trial_logits[0][0].split(b"-")[0]) / 1000.0 - session_start_time
-                    stop_time = int(trial_logits[-1][0].split(b"-")[0]) / 1000.0 - session_start_time
-                    trial_timestamps = np.linspace(start_time, stop_time, len(trial_logits - 2))
-                else:
-                    trial_timestamps = np.array(
-                        [(int(tl[0].split(b"-")[0]) / 1000.0 - session_start_time) for tl in trial_logits]
-                    )
+                trial_timestamps = np.array(
+                    [(int(tl[0].split(b"-")[0]) / 1000.0 - session_start_time) for tl in trial_logits]
+                )
                 timestamps.append(trial_timestamps)
 
                 trial_logits = np.stack(
@@ -95,7 +89,7 @@ class StaviskyPhonemeLogitsInterface(BaseDataInterface):
         return nwbfile
 
 
-class StaviskyDecodedTextInterface(BaseDataInterface):
+class BrainToTextDecodedTextInterface(BaseDataInterface):
     """Decoded text interface for Stavisky Redis conversion"""
 
     def __init__(
@@ -109,7 +103,6 @@ class StaviskyDecodedTextInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        # TODO: can also smooth timestamps for these if it turns out to be useful
     ):
         # initialize redis client and check connection
         r = redis.Redis(
@@ -141,11 +134,6 @@ class StaviskyDecodedTextInterface(BaseDataInterface):
                     last_text = curr_text
             elif b"final_decoded_sentence" in entry[1].keys():  # reset on trial end
                 last_text = ""
-                # timestamp = int(entry[0].split(b'-')[0]) / 1000. - session_start_time
-                # # TODO: determine if this is necessary. does the model decide when to stop,
-                # # or is it externally controlled? if the former, then a STOP event might be useful
-                # decoded_text.append("STOP")
-                # decoded_timestamps.append(timestamp)
 
         # get unique decoder outputs
         output_set = sorted(list(set(decoded_text)))
