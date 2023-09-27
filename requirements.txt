@@ -1,2 +1,2 @@
-neuroconv==0.3.0
+neuroconv>=0.4.4
 redis==4.5.1
