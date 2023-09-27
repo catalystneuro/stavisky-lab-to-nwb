@@ -35,7 +35,10 @@ class BrainToTextNWBConverter(NWBConverter):
         self.session_start_time = session_start_time
 
     def temporally_align_data_interfaces(self):
-        pass
+        if "PhonemeLogits" in self.data_interface_objects:
+            self.data_interface_objects["PhonemeLogits"].set_aligned_starting_time(-self.session_start_time)
+        if "DecodedText" in self.data_interface_objects:
+            self.data_interface_objects["DecodedText"].set_aligned_starting_time(-self.session_start_time)
         # if self.session_start_time != 0.0:
         #     self.data_interface_objects["Recording"].set_aligned_starting_time(-self.session_start_time)
         #     self.data_interface_objects["SpikingBandPower1ms"].set_aligned_starting_time(-self.session_start_time)
