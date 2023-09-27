@@ -43,8 +43,8 @@ def read_entry(
         if index is not None:
             data = data[[index]]
     return data
-    
-    
+
+
 def read_stream_fields(
     client: redis.Redis,
     stream_name: str,
@@ -65,8 +65,8 @@ def read_stream_fields(
         field_data.update({"ids": []})
     # start loop
     max_stream_len = max_stream_len or np.inf
-    min_id = min_id or '-'
-    max_id = max_id or '+'
+    min_id = min_id or "-"
+    max_id = max_id or "+"
     field = list(field_data.keys())[0]
     stream_entries = client.xrange(stream_name, min=min_id, max=max_id, count=chunk_size)
     while len(stream_entries) > 0 and len(field_data[field]) < max_stream_len:
@@ -86,6 +86,7 @@ def read_stream_fields(
 
 class RedisDataChunkIterator(GenericDataChunkIterator):
     """DataChunkIterator for Redis stream data"""
+
     def __init__(
         self,
         client: redis.Redis,
@@ -122,16 +123,18 @@ class RedisDataChunkIterator(GenericDataChunkIterator):
             display_progress=display_progress,
             progress_bar_options=progress_bar_options,
         )
-    
+
     def _get_chunk_buffer_shape(self, chunk_mb, buffer_gb):
         # convert sizes to bytes
         chunk_bytes = chunk_mb * 1e6
         buffer_bytes = buffer_gb * 1e9
         # get size of single entry
         entry = self.client.xrange(self.stream_name, count=1)[0]
-        entry_bytes = sys.getsizeof(entry[0]) + sys.getsizeof(entry[1]) + sum([sys.getsizeof(v) for v in entry[1].values()])
+        entry_bytes = (
+            sys.getsizeof(entry[0]) + sys.getsizeof(entry[1]) + sum([sys.getsizeof(v) for v in entry[1].values()])
+        )
         # get entries per chunk and buffer
-        entries_per_chunk = max(chunk_bytes // entry_bytes, 1) # read at least 1 entry
+        entries_per_chunk = max(chunk_bytes // entry_bytes, 1)  # read at least 1 entry
         entries_per_chunk = min(entries_per_chunk, self.max_stream_len)
         entries_per_buffer = (buffer_bytes // (entries_per_chunk * entry_bytes)) * entries_per_chunk
         entries_per_buffer = min(entries_per_buffer, self.max_stream_len)
@@ -151,14 +154,13 @@ class RedisDataChunkIterator(GenericDataChunkIterator):
         end_id = self.entry_ids[end_idx]
         # read data from redis
         entries = self.client.xrange(self.stream_name, min=start_id, max=end_id)
-        data = np.concatenate([
-            read_entry(entry=entry[1], field=self.field, **self.read_kwargs) 
-            for entry in entries
-        ], axis=0)
+        data = np.concatenate(
+            [read_entry(entry=entry[1], field=self.field, **self.read_kwargs) for entry in entries], axis=0
+        )
         # extra slice if necessary
         if (selection[0].start % self.frames_per_entry) != 0:
             start_offset = selection[0].start % self.frames_per_entry
-            data = data[start_offset:(start_offset + selection[0].end - selection[0].start)]
+            data = data[start_offset : (start_offset + selection[0].end - selection[0].start)]
         return data
 
     def _get_dtype(self):

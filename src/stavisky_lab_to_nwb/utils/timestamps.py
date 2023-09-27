@@ -28,14 +28,16 @@ def get_stream_ids_and_timestamps(
     timestamp_kwargs = {}
     if timestamp_field is not None:
         assert timestamp_encoding is not None
-        timestamp_kwargs.update({
-            timestamp_field: dict(
-                encoding=timestamp_encoding,
-                dtype=timestamp_dtype,
-                shape=timestamp_shape or (frames_per_entry,),
-                index=timestamp_index,
-            )
-        })
+        timestamp_kwargs.update(
+            {
+                timestamp_field: dict(
+                    encoding=timestamp_encoding,
+                    dtype=timestamp_dtype,
+                    shape=timestamp_shape or (frames_per_entry,),
+                    index=timestamp_index,
+                )
+            }
+        )
     # read ids and timestamps
     field_data = read_stream_fields(
         client=client,
@@ -46,10 +48,7 @@ def get_stream_ids_and_timestamps(
     )
     # convert entry ids to redis timestamps
     entry_ids = field_data["ids"]
-    redis_timestamps = np.array([
-        int(safe_decode(eid).split("-")[0]) * 1e-3
-        for eid in entry_ids
-    ], dtype=np.float128)
+    redis_timestamps = np.array([int(safe_decode(eid).split("-")[0]) * 1e-3 for eid in entry_ids], dtype=np.float128)
     redis_timestamps = np.repeat(redis_timestamps, frames_per_entry)
     field_timestamps = field_data.get(timestamp_field)
     if field_timestamps is not None:
@@ -60,7 +59,7 @@ def get_stream_ids_and_timestamps(
         field_timestamps *= timestamp_conversion
         assert redis_timestamps.shape == field_timestamps.shape
     return entry_ids, redis_timestamps, field_timestamps
-    
+
 
 def interpolate_timestamps(
     timestamps: np.ndarray,
@@ -70,10 +69,10 @@ def interpolate_timestamps(
     if sampling_frequency is None:
         sampling_diff = (timestamps[-1] - timestamps[frames_per_entry - 1]) / (len(timestamps) - frames_per_entry)
     else:
-        sampling_diff = 1. / sampling_frequency
+        sampling_diff = 1.0 / sampling_frequency
     smoothed_timestamps = np.arange(len(timestamps)) * sampling_diff
     return smoothed_timestamps
-    
+
 
 def convolve_smooth_timestamps(
     timestamps: np.ndarray,
@@ -145,7 +144,7 @@ def smooth_timestamps(
             window_len=window_len,
             stride_len=stride_len,
         )
-    
+
     smoothed_timestamps += timestamps[-1] - smoothed_timestamps[-1]  # align timestamp end
 
     # optional: check that smoothed timestamps do not precede original
@@ -156,5 +155,5 @@ def smooth_timestamps(
     else:
         if np.any(timestamps < smoothed_timestamps):
             print("Warning: some smoothed timestamps occur after the original timestamps.")
-    
+
     return smoothed_timestamps
