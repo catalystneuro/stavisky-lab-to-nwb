@@ -5,6 +5,10 @@ from typing import Optional
 
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 
+from stavisky_lab_to_nwb.general_interfaces import (
+    StaviskyRecordingInterface,
+)
+
 from stavisky_lab_to_nwb.braintotext import (
     BrainToTextPhonemeLogitsInterface,
     BrainToTextDecodedTextInterface,
@@ -16,7 +20,7 @@ class BrainToTextNWBConverter(NWBConverter):
     """Primary conversion class for my extracellular electrophysiology dataset."""
 
     data_interface_classes = dict(
-        # Recording=StaviskyRecordingInterface,
+        Recording=StaviskyRecordingInterface,
         # Sorting=StaviskySortingInterface,
         # Trials=StaviskyTrialsInterface,
         # SpikingBandPower1ms=StaviskySpikingBandPowerInterface,
@@ -35,12 +39,12 @@ class BrainToTextNWBConverter(NWBConverter):
         self.session_start_time = session_start_time
 
     def temporally_align_data_interfaces(self):
-        pass
-        # if self.session_start_time != 0.0:
-        #     self.data_interface_objects["Recording"].set_aligned_starting_time(-self.session_start_time)
-        #     self.data_interface_objects["SpikingBandPower1ms"].set_aligned_starting_time(-self.session_start_time)
-        #     self.data_interface_objects["SpikingBandPower20ms"].set_aligned_starting_time(-self.session_start_time)
-        #     self.data_interface_objects["Sorting"].set_aligned_starting_time(-self.session_start_time)
-        # self.data_interface_objects["Sorting"].set_aligned_timestamps(
-        #     self.data_interface_objects["Recording"].get_timestamps()[::30]
-        # )
+        # initialize common clock variables
+        redis_neural_clock = None
+        nsp_neural_clock = None
+        # align recording start to session start time
+        if "Recording" in self.data_interface_objects:
+            redis_neural_clock = self.data_interface_objects["Recording"].get_timestamps(nsp=False)
+            redis_neural_clock = (redis_neural_clock - self.session_start_time).astype("float64")
+            nsp_neural_clock = self.data_interface_objects["Recording"].get_timestamps(nsp=True).astype("float64")
+            self.data_interface_objects["Recording"].set_aligned_timestamps(redis_neural_clock, nsp=False)
