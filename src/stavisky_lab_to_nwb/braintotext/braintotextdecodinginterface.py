@@ -24,14 +24,14 @@ class BrainToTextPhonemeLogitsInterface(BaseDataInterface):
         dtype: str = "float32",
     ):
         super().__init__(
-            port=port, 
-            host=host, 
-            stream_name=stream_name, 
+            port=port,
+            host=host,
+            stream_name=stream_name,
             data_field=data_field,
         )
         self.aligned_starting_time = 0.0
         self.dtype = dtype
-    
+
     def set_aligned_starting_time(self, aligned_starting_time: float):
         """To imitate TemporalAlignmentInterface functionality without reading timestamps"""
         self.aligned_starting_time = aligned_starting_time
@@ -58,7 +58,7 @@ class BrainToTextPhonemeLogitsInterface(BaseDataInterface):
         decoder_output = r.xrange(self.source_data["stream_name"], count=chunk_size)
         logits = []
         timestamps = []
-        while len(decoder_output) > 0: # read in chunks until entire stream has been read
+        while len(decoder_output) > 0:  # read in chunks until entire stream has been read
             for entry in decoder_output:
                 # append data until end of each trial
                 if b"start" in entry[1].keys():  # start of trial decoding period
@@ -70,16 +70,21 @@ class BrainToTextPhonemeLogitsInterface(BaseDataInterface):
                     )
                     timestamps.append(trial_timestamps)
                     # decoding logits
-                    trial_logits = np.stack([
-                        read_entry(tl[1], self.source_data["data_field"], encoding="buffer", dtype=self.dtype)
-                        for tl in trial_logits
-                    ], axis=0)
+                    trial_logits = np.stack(
+                        [
+                            read_entry(tl[1], self.source_data["data_field"], encoding="buffer", dtype=self.dtype)
+                            for tl in trial_logits
+                        ],
+                        axis=0,
+                    )
                     logits.append(trial_logits)
                     trial_logits = []  # reset data stack
                 elif b"logits" in entry[1].keys():
                     trial_logits.append(entry)
             # read next `chunk_size` entries
-            decoder_output = r.xrange(self.source_data["stream_name"], count=chunk_size, min=b"(" + decoder_output[-1][0])
+            decoder_output = r.xrange(
+                self.source_data["stream_name"], count=chunk_size, min=b"(" + decoder_output[-1][0]
+            )
         # stack all data
         logits = np.concatenate(logits, axis=0)
         timestamps = np.concatenate(timestamps)
@@ -120,7 +125,7 @@ class BrainToTextDecodedTextInterface(BaseDataInterface):
     ):
         super().__init__(port=port, host=host, stream_name=stream_name)
         self.aligned_starting_time = 0.0
-    
+
     def set_aligned_starting_time(self, aligned_starting_time: float):
         """To imitate TemporalAlignmentInterface functionality without reading timestamps"""
         self.aligned_starting_time = aligned_starting_time
@@ -148,7 +153,7 @@ class BrainToTextDecodedTextInterface(BaseDataInterface):
         decoded_timestamps = []
         decoded_text = []
         last_text = ""
-        while len(decoder_output) > 0: # read in chunks until entire stream has been read
+        while len(decoder_output) > 0:  # read in chunks until entire stream has been read
             for entry in decoder_output:
                 if b"partial_decoded_sentence" in entry[1].keys():
                     curr_text = str(entry[1][b"partial_decoded_sentence"], "utf-8").strip()
@@ -160,7 +165,9 @@ class BrainToTextDecodedTextInterface(BaseDataInterface):
                 elif b"final_decoded_sentence" in entry[1].keys():  # reset on trial end
                     last_text = ""
             # read next `chunk_size` entries
-            decoder_output = r.xrange(self.source_data["stream_name"], count=chunk_size, min=b"(" + decoder_output[-1][0])
+            decoder_output = r.xrange(
+                self.source_data["stream_name"], count=chunk_size, min=b"(" + decoder_output[-1][0]
+            )
         # stack timestamps
         decoded_timestamps = np.array(decoded_timestamps, dtype="float64")
 
