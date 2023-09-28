@@ -147,8 +147,7 @@ class RedisDataChunkIterator(GenericDataChunkIterator):
     def _get_data(self, selection: tuple[slice]):
         # get entry idx range to read
         start_idx = selection[0].start // self.frames_per_entry
-        end_idx = selection[0].end // self.frames_per_entry
-        end_idx += int((selection[0].end % self.frames_per_entry) > 0)
+        end_idx = (selection[0].stop - 1) // self.frames_per_entry # xrange max is inclusive
         # convert to entry id
         start_id = self.entry_ids[start_idx]
         end_id = self.entry_ids[end_idx]
@@ -158,13 +157,13 @@ class RedisDataChunkIterator(GenericDataChunkIterator):
             [read_entry(entry=entry[1], field=self.field, **self.read_kwargs) for entry in entries], axis=0
         )
         # extra slice if necessary
-        if (selection[0].start % self.frames_per_entry) != 0:
+        if (selection[0].start % self.frames_per_entry) != 0 or (selection[0].stop % self.frames_per_entry) != 0:
             start_offset = selection[0].start % self.frames_per_entry
-            data = data[start_offset : (start_offset + selection[0].end - selection[0].start)]
+            data = data[start_offset : (start_offset + selection[0].stop - selection[0].start)]
         return data
 
     def _get_dtype(self):
-        return self.read_kwargs.get("dtype")
+        return np.dtype(self.read_kwargs.get("dtype"))
 
     def _get_maxshape(self):
         entry = self.client.xrange(self.stream_name, count=1)[0][1]

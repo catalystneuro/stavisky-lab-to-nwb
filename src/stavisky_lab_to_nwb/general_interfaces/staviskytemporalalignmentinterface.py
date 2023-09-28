@@ -299,13 +299,14 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         timestamps = self.get_timestamps()
         assert timestamps is not None, "Timestamps must be loaded before calling `add_to_processing_module()`"
         nsp_timestamps = self.get_timestamps(nsp=True)
+        data_len = data._get_maxshape()[0] if isinstance(data, RedisDataChunkIterator) else data.shape[0]
         if stub_test:
-            timestamps = timestamps[: len(data)]
+            timestamps = timestamps[: data_len]
             if nsp_timestamps is not None:
-                nsp_timestamps = nsp_timestamps[: len(data)]
-        assert len(timestamps) == len(data), "Timestamps and data have different lengths!"
+                nsp_timestamps = nsp_timestamps[: data_len]
+        assert len(timestamps) == data_len, "Timestamps and data have different lengths!"
         if nsp_timestamps is not None:
-            assert len(nsp_timestamps) == len(data), "Timestamps and data have different lengths!"
+            assert len(nsp_timestamps) == data_len, "Timestamps and data have different lengths!"
 
         # create timeseries objs
         data_to_add = []

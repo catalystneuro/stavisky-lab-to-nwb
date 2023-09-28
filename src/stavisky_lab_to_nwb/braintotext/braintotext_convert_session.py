@@ -32,7 +32,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     # Configure conversion
     source_data = dict()
     conversion_options = dict()
-
+    
     # Add Recording
     source_data.update(
         dict(
@@ -95,51 +95,59 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     #         )
     #     )
     # )
-
-    # Add SpikingBandPower 1 ms resolution
-    # source_data.update(
-    #     dict(
-    #         SpikingBandPower1ms=dict(
-    #             port=port,
-    #             host=host,
-    #             stream_name="neuralFeatures_1ms",
-    #             data_key="spike_band_power",
-    #             ts_key="spiking_band_power_1ms",
-    #         )
-    #     )
-    # )
-    # conversion_options.update(
-    #     dict(
-    #         SpikingBandPower1ms=dict(
-    #             stub_test=stub_test,
-    #             smooth_timestamps=False,
-    #             chunk_size=10000,
-    #         )
-    #     )
-    # )
+    
+    # Add SpikingBandPower 10 ms resolution
+    source_data.update(
+        dict(
+            SpikingBandPower10ms=dict(
+                port=port,
+                host=host,
+                stream_name="binnedFeatures_10ms",
+                data_field="spike_band_power",
+                ts_key="spiking_band_power_10ms",
+                nsp_timestamp_field="input_nsp_timestamp",
+                nsp_timestamp_conversion=(1. / 3.0e4),
+                nsp_timestamp_encoding="buffer",
+                nsp_timestamp_dtype="int64",
+                nsp_timestamp_index=0,
+                chunk_size=10000,
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            SpikingBandPower10ms=dict(
+                stub_test=stub_test,
+            )
+        )
+    )
 
     # Add SpikingBandPower 20 ms resolution
-    # source_data.update(
-    #     dict(
-    #         SpikingBandPower20ms=dict(
-    #             port=port,
-    #             host=host,
-    #             stream_name="binnedFeatures_20ms",
-    #             data_key="spike_band_power_bin",
-    #             ts_key="spiking_band_power_20ms",
-    #         )
-    #     )
-    # )
-    # conversion_options.update(
-    #     dict(
-    #         SpikingBandPower20ms=dict(
-    #             stub_test=stub_test,
-    #             smooth_timestamps=False,
-    #             chunk_size=1000,
-    #         )
-    #     )
-    # )
-
+    source_data.update(
+        dict(
+            SpikingBandPower20ms=dict(
+                port=port,
+                host=host,
+                stream_name="binnedFeatures_20ms",
+                data_field="spike_band_power",
+                ts_key="spiking_band_power_20ms",
+                nsp_timestamp_field="input_nsp_timestamp",
+                nsp_timestamp_conversion=(1. / 3.0e4),
+                nsp_timestamp_encoding="buffer",
+                nsp_timestamp_dtype="int64",
+                nsp_timestamp_index=0,
+                chunk_size=10000,
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            SpikingBandPower20ms=dict(
+                stub_test=stub_test,
+            )
+        )
+    )
+    
     # Add Trials
     source_data.update(dict(Trials=dict(port=port, host=host)))
     conversion_options.update(dict(Trials=dict()))
