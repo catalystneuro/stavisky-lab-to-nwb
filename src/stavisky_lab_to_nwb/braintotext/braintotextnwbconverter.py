@@ -18,7 +18,7 @@ class BrainToTextNWBConverter(NWBConverter):
     data_interface_classes = dict(
         # Recording=StaviskyRecordingInterface,
         # Sorting=StaviskySortingInterface,
-        # Trials=StaviskyTrialsInterface,
+        Trials=BrainToTextTrialsInterface,
         # SpikingBandPower1ms=StaviskySpikingBandPowerInterface,
         # SpikingBandPower20ms=StaviskySpikingBandPowerInterface,
         PhonemeLogits=BrainToTextPhonemeLogitsInterface,
@@ -39,11 +39,5 @@ class BrainToTextNWBConverter(NWBConverter):
             self.data_interface_objects["PhonemeLogits"].set_aligned_starting_time(-self.session_start_time)
         if "DecodedText" in self.data_interface_objects:
             self.data_interface_objects["DecodedText"].set_aligned_starting_time(-self.session_start_time)
-        # if self.session_start_time != 0.0:
-        #     self.data_interface_objects["Recording"].set_aligned_starting_time(-self.session_start_time)
-        #     self.data_interface_objects["SpikingBandPower1ms"].set_aligned_starting_time(-self.session_start_time)
-        #     self.data_interface_objects["SpikingBandPower20ms"].set_aligned_starting_time(-self.session_start_time)
-        #     self.data_interface_objects["Sorting"].set_aligned_starting_time(-self.session_start_time)
-        # self.data_interface_objects["Sorting"].set_aligned_timestamps(
-        #     self.data_interface_objects["Recording"].get_timestamps()[::30]
-        # )
+        if "Trials" in self.data_interface_objects:
+            self.data_interface_objects["Trials"].set_aligned_starting_time(-self.session_start_time, clock="redis")
