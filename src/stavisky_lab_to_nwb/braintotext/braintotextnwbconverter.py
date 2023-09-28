@@ -34,10 +34,10 @@ class BrainToTextNWBConverter(NWBConverter):
         PhonemeLogits=BrainToTextPhonemeLogitsInterface,
         DecodedText=BrainToTextDecodedTextInterface,
         FilteredRecording=StaviskyFilteredRecordingInterface,
-        SmoothedSBP10ms = StaviskySmoothedSpikingBandPowerInterface,
-        SmoothedTC10ms = StaviskySmoothedThreshCrossingInterface,
-        SmoothedSBP20ms = StaviskySmoothedSpikingBandPowerInterface,
-        SmoothedTC20ms = StaviskySmoothedThreshCrossingInterface,
+        SmoothedSBP10ms=StaviskySmoothedSpikingBandPowerInterface,
+        SmoothedTC10ms=StaviskySmoothedThreshCrossingInterface,
+        SmoothedSBP20ms=StaviskySmoothedSpikingBandPowerInterface,
+        SmoothedTC20ms=StaviskySmoothedThreshCrossingInterface,
     )
 
     def __init__(

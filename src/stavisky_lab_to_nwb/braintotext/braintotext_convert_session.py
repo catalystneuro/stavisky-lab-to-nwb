@@ -103,7 +103,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
             )
         )
     )
-    
+
     # Add FilteredEphys interface
     source_data.update(
         dict(
@@ -114,7 +114,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 data_field="samples",
                 ts_key="filtered_ephys",
                 nsp_timestamp_field="timestamps",
-                nsp_timestamp_conversion=(1. / 3.0e4),
+                nsp_timestamp_conversion=(1.0 / 3.0e4),
                 nsp_timestamp_encoding="buffer",
                 nsp_timestamp_dtype="int64",
                 chunk_size=10000,
