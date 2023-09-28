@@ -1,1 +1,2 @@
 from .staviskyrecordinginterface import StaviskyRecordingInterface
+from .staviskysortinginterface import StaviskySortingInterface
