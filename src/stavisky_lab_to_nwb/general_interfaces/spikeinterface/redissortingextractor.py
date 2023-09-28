@@ -93,13 +93,10 @@ class RedisStreamSortingExtractor(BaseSorting):
         )
         if smoothing_kwargs:
             timestamps = smooth_timestamps(
-                timestamps, 
-                frames_per_entry=frames_per_entry,
-                sampling_frequency=sampling_frequency, 
-                **smoothing_kwargs
+                timestamps, frames_per_entry=frames_per_entry, sampling_frequency=sampling_frequency, **smoothing_kwargs
             )
         if sampling_frequency is None:
-            sampling_frequency = np.round(1. / np.mean(np.diff(timestamps)), 8)
+            sampling_frequency = np.round(1.0 / np.mean(np.diff(timestamps)), 8)
 
         # Construct unit IDs if not provided
         entry = self._client.xrange(stream_name, count=1)[0][1]
@@ -110,10 +107,10 @@ class RedisStreamSortingExtractor(BaseSorting):
             unit_ids = np.arange(unit_count, dtype=int).tolist()
         else:
             assert len(unit_ids) == unit_count, "Detected more units than the number of unit IDs provided"
-        
+
         # set up data reading args
         shape = (frames_per_entry, unit_count) if unit_dim == 1 else (unit_count, frames_per_entry)
-        transpose = (unit_dim == 0)
+        transpose = unit_dim == 0
         data_kwargs = dict(encoding="buffer", shape=shape, transpose=transpose)
 
         # Initialize Sorting and SortingSegment
@@ -279,16 +276,16 @@ class RedisStreamSortingExtractor(BaseSorting):
                     "times are not always propagated to across preprocessing"
                     "Use use this carefully!"
                 )
-    
+
     def get_entry_ids(self, segment_index=None):
         segment_index = self._check_segment_index(segment_index)
         segment = self._sorting_segments[segment_index]
         entry_ids = segment.get_entry_ids()
         return entry_ids
-    
+
     def get_clock(self):
         return self._clock
-    
+
     def set_clock(self, clock):
         assert clock in ["redis", "nsp"]
         self._clock = clock
@@ -438,7 +435,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
             if self.t_start is not None:
                 time_vector += self.t_start
             return time_vector
-    
+
     def get_nsp_times(self):
         return self._nsp_timestamps
 

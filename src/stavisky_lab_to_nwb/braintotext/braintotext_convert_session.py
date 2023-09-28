@@ -82,7 +82,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 frames_per_entry=1,
                 timestamp_field="input_nsp_timestamp",
                 timestamp_kwargs=dict(
-                    timestamp_conversion=1./3.0e4,
+                    timestamp_conversion=1.0 / 3.0e4,
                     timestamp_encoding="buffer",
                     timestamp_dtype="int64",
                     timestamp_index=0,

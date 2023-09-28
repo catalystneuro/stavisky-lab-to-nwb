@@ -16,7 +16,7 @@ class StaviskySortingInterface(BaseSortingExtractorInterface, DualTimestampTempo
 
     ExtractorModuleName = "stavisky_lab_to_nwb.general_interfaces.spikeinterface"
     ExtractorName = "RedisStreamSortingExtractor"
-    
+
     def __init__(
         self,
         port: int,
@@ -60,7 +60,7 @@ class StaviskySortingInterface(BaseSortingExtractorInterface, DualTimestampTempo
             host=self.source_data["host"],
         )
         r.ping()
-        
+
         # read timestamp data from redis
         entry_ids, redis_timestamps, nsp_timestamps = get_stream_ids_and_timestamps(
             client=r,
@@ -68,16 +68,16 @@ class StaviskySortingInterface(BaseSortingExtractorInterface, DualTimestampTempo
             frames_per_entry=self.source_data.get("frames_per_entry", 1),
             timestamp_field=self.source_data.get("timestamp_field"),
             chunk_size=self.source_data.get("chunk_size", 10000),
-            **self.source_data.get("timestamp_kwargs", {})
+            **self.source_data.get("timestamp_kwargs", {}),
         )
         if self.source_data.get("smoothing_kwargs", {}):
             redis_timestamps = smooth_timestamps(
-                redis_timestamps, 
+                redis_timestamps,
                 frames_per_entry=self.source_data.get("frames_per_entry", 1),
-                sampling_frequency=self.source_data.get("sampling_frequency"), 
+                sampling_frequency=self.source_data.get("sampling_frequency"),
                 **self.source_data.get("smoothing_kwargs"),
             )
-        
+
         # close redis client
         r.close()
 
@@ -125,10 +125,12 @@ class StaviskySortingInterface(BaseSortingExtractorInterface, DualTimestampTempo
             for segment_index in range(self._number_of_segments):
                 if nsp:
                     self.sorting_extractor.set_nsp_times(
-                        times=aligned_timestamps[segment_index], segment_index=segment_index)
+                        times=aligned_timestamps[segment_index], segment_index=segment_index
+                    )
                 else:
                     self.sorting_extractor.set_times(
-                        times=aligned_timestamps[segment_index], segment_index=segment_index)
-    
+                        times=aligned_timestamps[segment_index], segment_index=segment_index
+                    )
+
     def get_entry_ids(self):
         return self.sorting_extractor.get_entry_ids()
