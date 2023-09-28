@@ -1,1 +1,2 @@
 from .redisrecordingextractor import RedisStreamRecordingExtractor
+from .redissortingextractor import RedisStreamSortingExtractor
