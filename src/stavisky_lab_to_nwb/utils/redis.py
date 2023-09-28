@@ -135,9 +135,10 @@ class RedisDataChunkIterator(GenericDataChunkIterator):
         )
         # get entries per chunk and buffer
         entries_per_chunk = max(chunk_bytes // entry_bytes, 1)  # read at least 1 entry
-        entries_per_chunk = min(entries_per_chunk, self.max_stream_len)
         entries_per_buffer = (buffer_bytes // (entries_per_chunk * entry_bytes)) * entries_per_chunk
-        entries_per_buffer = min(entries_per_buffer, self.max_stream_len)
+        if self.max_stream_len is not None:
+            entries_per_chunk = min(entries_per_chunk, self.max_stream_len)
+            entries_per_buffer = min(entries_per_buffer, self.max_stream_len)
         # get chunk and buffer shapes
         data = read_entry(entry=entry[1], field=self.field, **self.read_kwargs)
         chunk_shape = (entries_per_chunk * data.shape[0], data.shape[1])

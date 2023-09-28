@@ -253,7 +253,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         assert client.xlen(stream_name) > 0
 
         # set max read len if stub_test
-        max_len = client.xlen(stream_name) // 4 if stub_test else np.inf
+        max_len = client.xlen(stream_name) // 4 if stub_test else None
 
         # make iterators
         if not use_chunk_iterator:
