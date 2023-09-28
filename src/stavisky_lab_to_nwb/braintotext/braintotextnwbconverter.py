@@ -35,5 +35,9 @@ class BrainToTextNWBConverter(NWBConverter):
         self.session_start_time = session_start_time
 
     def temporally_align_data_interfaces(self):
+        if "PhonemeLogits" in self.data_interface_objects:
+            self.data_interface_objects["PhonemeLogits"].set_aligned_starting_time(-self.session_start_time)
+        if "DecodedText" in self.data_interface_objects:
+            self.data_interface_objects["DecodedText"].set_aligned_starting_time(-self.session_start_time)
         if "Trials" in self.data_interface_objects:
             self.data_interface_objects["Trials"].set_aligned_starting_time(-self.session_start_time, clock="redis")
