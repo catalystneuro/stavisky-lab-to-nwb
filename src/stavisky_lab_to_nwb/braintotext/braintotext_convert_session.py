@@ -34,32 +34,41 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     conversion_options = dict()
 
     # Add Recording
-    # source_data.update(
-    #     dict(
-    #         Recording=dict(
-    #             port=port,
-    #             host=host,
-    #             stream_name="continuousNeural",
-    #             data_key="samples",
-    #             dtype="int16",
-    #             frames_per_entry=30,
-    #             timestamp_source="redis",
-    #             timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
-    #             gain_to_uv=100.0,
-    #             channel_dim=1,
-    #         )
-    #     )
-    # )
-    # conversion_options.update(
-    #     dict(
-    #         Recording=dict(
-    #             iterator_opts=dict(
-    #                 buffer_gb=0.1,  # may need to reduce depending on machine
-    #             ),
-    #             stub_test=stub_test,
-    #         )
-    #     )
-    # )
+    source_data.update(
+        dict(
+            Recording=dict(
+                port=port,
+                host=host,
+                stream_name="continuousNeural",
+                data_field="samples",
+                data_dtype="int16",
+                frames_per_entry=30,
+                sampling_frequency=3.0e4,
+                timestamp_field="timestamps",
+                timestamp_kwargs=dict(
+                    timestamp_dtype="int64",
+                    timestamp_encoding="buffer",
+                    timestamp_conversion=1.0 / 3e4,
+                ),
+                smoothing_kwargs=dict(
+                    window_len="max",
+                    enforce_causal=True,
+                ),
+                gain_to_uv=0.01,
+                channel_dim=1,
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            Recording=dict(
+                iterator_opts=dict(
+                    buffer_gb=0.2,  # may need to reduce depending on machine
+                ),
+                stub_test=stub_test,
+            )
+        )
+    )
 
     # Add Sorting
     # source_data.update(
