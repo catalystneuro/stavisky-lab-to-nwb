@@ -22,7 +22,7 @@ class BrainToTextNWBConverter(NWBConverter):
     data_interface_classes = dict(
         Recording=StaviskyRecordingInterface,
         # Sorting=StaviskySortingInterface,
-        # Trials=StaviskyTrialsInterface,
+        Trials=BrainToTextTrialsInterface,
         # SpikingBandPower1ms=StaviskySpikingBandPowerInterface,
         # SpikingBandPower20ms=StaviskySpikingBandPowerInterface,
         PhonemeLogits=BrainToTextPhonemeLogitsInterface,
@@ -48,3 +48,5 @@ class BrainToTextNWBConverter(NWBConverter):
             redis_neural_clock = (redis_neural_clock - self.session_start_time).astype("float64")
             nsp_neural_clock = self.data_interface_objects["Recording"].get_timestamps(nsp=True).astype("float64")
             self.data_interface_objects["Recording"].set_aligned_timestamps(redis_neural_clock, nsp=False)
+        if "Trials" in self.data_interface_objects:
+            self.data_interface_objects["Trials"].set_aligned_starting_time(-self.session_start_time, clock="redis")
