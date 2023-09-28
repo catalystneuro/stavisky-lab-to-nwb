@@ -130,7 +130,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     #         )
     #     )
     # )
-    
+
     # Add audio
     source_data.update(
         dict(

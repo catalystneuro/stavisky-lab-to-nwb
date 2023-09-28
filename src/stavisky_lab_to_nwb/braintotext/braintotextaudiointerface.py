@@ -9,9 +9,9 @@ from ..general_interfaces import StaviskyTemporalAlignmentInterface
 
 
 class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
-    default_data_kwargs: dict = dict(dtype="int16", encoding="buffer", shape=(30,2))
-    
-    def __init__( # TODO: smooth timestamps somehow
+    default_data_kwargs: dict = dict(dtype="int16", encoding="buffer", shape=(30, 2))
+
+    def __init__(  # TODO: smooth timestamps somehow
         self,
         port: int,
         host: str,
@@ -47,7 +47,7 @@ class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
             load_timestamps=load_timestamps,
             chunk_size=chunk_size,
         )
-    
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -61,18 +61,18 @@ class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
             host=self.source_data["host"],
         )
         r.ping()
-        
+
         # read data
         stream_name = self.source_data["stream_name"]
         data_field = self.source_data["data_field"]
         analog = self.get_data_iterator(client=r, stub_test=stub_test, chunk_size=chunk_size)
         assert len(np.unique(analog[:, 1])) == 1
-        analog = analog[:, 0] # drop second channel as it has only one value
-        
+        analog = analog[:, 0]  # drop second channel as it has only one value
+
         # stub timestamps if necessary
         timestamps = self.get_timestamps(nsp=False)
         if stub_test:
-            timestamps = timestamps[:len(analog)]
+            timestamps = timestamps[: len(analog)]
         assert len(timestamps) == len(analog), "Timestamps and data have different lengths!"
 
         # get metadata about filtering, etc.
@@ -85,31 +85,32 @@ class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
         sampling_freq = params.get("samp_freq", [None])[0]
         if sampling_freq is not None:
             sampling_freq = float(sampling_freq)
-        
+
         # check sampling frequency
         if sampling_freq is not None:
-            timestamps_freq = (1. / np.mean(np.diff(timestamps)))
-            assert np.isclose(sampling_freq, timestamps_freq), \
-                f"Data sampling frequency differs from stated value. {timestamps_freq} != {sampling_freq}"
+            timestamps_freq = 1.0 / np.mean(np.diff(timestamps))
+            assert np.isclose(
+                sampling_freq, timestamps_freq
+            ), f"Data sampling frequency differs from stated value. {timestamps_freq} != {sampling_freq}"
 
         # build description from metadata
         description = f"Raw microphone audio recorded at {sampling_freq or 'unknown'} Hz."
-        
+
         # add to nwbfile
         dataclass = AcousticWaveformSeries
         dataclass_kwargs = dict(
             starting_time=timestamps[0],
-            rate=(1. / np.mean(np.diff(timestamps))),
+            rate=(1.0 / np.mean(np.diff(timestamps))),
             description=description,
         )
-        
+
         data_interface = dataclass(
             data=analog,
             name=self.ts_key,
             **dataclass_kwargs,
         )
         nwbfile.add_acquisition(data_interface)
-        
+
         # close redis client
         r.close()
 
