@@ -32,7 +32,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     # Configure conversion
     source_data = dict()
     conversion_options = dict()
-    
+
     # Add Recording
     source_data.update(
         dict(
@@ -95,7 +95,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     #         )
     #     )
     # )
-    
+
     # Add SpikingBandPower 10 ms resolution
     source_data.update(
         dict(
@@ -106,7 +106,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 data_field="spike_band_power",
                 ts_key="spiking_band_power_10ms",
                 nsp_timestamp_field="input_nsp_timestamp",
-                nsp_timestamp_conversion=(1. / 3.0e4),
+                nsp_timestamp_conversion=(1.0 / 3.0e4),
                 nsp_timestamp_encoding="buffer",
                 nsp_timestamp_dtype="int64",
                 nsp_timestamp_index=0,
@@ -132,7 +132,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 data_field="spike_band_power",
                 ts_key="spiking_band_power_20ms",
                 nsp_timestamp_field="input_nsp_timestamp",
-                nsp_timestamp_conversion=(1. / 3.0e4),
+                nsp_timestamp_conversion=(1.0 / 3.0e4),
                 nsp_timestamp_encoding="buffer",
                 nsp_timestamp_dtype="int64",
                 nsp_timestamp_index=0,
@@ -147,7 +147,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
             )
         )
     )
-    
+
     # Add Trials
     source_data.update(dict(Trials=dict(port=port, host=host)))
     conversion_options.update(dict(Trials=dict()))

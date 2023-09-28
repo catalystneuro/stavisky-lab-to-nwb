@@ -147,7 +147,7 @@ class RedisDataChunkIterator(GenericDataChunkIterator):
     def _get_data(self, selection: tuple[slice]):
         # get entry idx range to read
         start_idx = selection[0].start // self.frames_per_entry
-        end_idx = (selection[0].stop - 1) // self.frames_per_entry # xrange max is inclusive
+        end_idx = (selection[0].stop - 1) // self.frames_per_entry  # xrange max is inclusive
         # convert to entry id
         start_id = self.entry_ids[start_idx]
         end_id = self.entry_ids[end_idx]

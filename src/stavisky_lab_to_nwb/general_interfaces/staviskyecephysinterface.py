@@ -16,7 +16,8 @@ from stavisky_lab_to_nwb.general_interfaces.staviskytemporalalignmentinterface i
 
 class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
     """Spiking band power interface for Stavisky Redis conversion"""
-    default_data_kwargs: dict = dict(dtype="float32", encoding="buffer", shape=(1,256))
+
+    default_data_kwargs: dict = dict(dtype="float32", encoding="buffer", shape=(1, 256))
 
     def __init__(
         self,
@@ -37,9 +38,9 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
         chunk_size: Optional[int] = None,
     ):
         super().__init__(
-            port=port, 
-            host=host, 
-            stream_name=stream_name, 
+            port=port,
+            host=host,
+            stream_name=stream_name,
             data_field=data_field,
             ts_key=ts_key,
             frames_per_entry=frames_per_entry,
@@ -83,11 +84,11 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
             host=self.source_data["host"],
         )
         r.ping()
-        
+
         # read data
         sbp = self.get_data_iterator(
-            client=r, 
-            stub_test=stub_test, 
+            client=r,
+            stub_test=stub_test,
             chunk_size=chunk_size,
             use_chunk_iterator=use_chunk_iterator,
             iterator_opts=iterator_opts,
@@ -121,9 +122,9 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
 
         # get processing module
         module_name = "ecephys"
-        module_description = "Intermediate data from extracellular electrophysiology recordings, e.g., LFP." 
+        module_description = "Intermediate data from extracellular electrophysiology recordings, e.g., LFP."
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
-        
+
         # add to nwbfile
         dataclass_kwargs = dict(
             unit="V^2",
@@ -137,7 +138,7 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
             dataclass_kwargs=dataclass_kwargs,
             stub_test=stub_test,
         )
-        
+
         # close redis client
         r.close()
 
@@ -146,8 +147,9 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
 
 class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
     """Filtered continuous data interface for Stavisky conversion"""
-    default_data_kwargs: dict = dict(dtype="int16", encoding="buffer", shape=(300,256))
-    
+
+    default_data_kwargs: dict = dict(dtype="int16", encoding="buffer", shape=(300, 256))
+
     def __init__(
         self,
         port: int,
@@ -167,9 +169,9 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
         chunk_size: Optional[int] = None,
     ):
         super().__init__(
-            port=port, 
-            host=host, 
-            stream_name=stream_name, 
+            port=port,
+            host=host,
+            stream_name=stream_name,
             data_field=data_field,
             ts_key=ts_key,
             frames_per_entry=frames_per_entry,
@@ -183,7 +185,7 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
             load_timestamps=load_timestamps,
             chunk_size=chunk_size,
         )
-        
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -199,16 +201,16 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
             host=self.source_data["host"],
         )
         r.ping()
-        
+
         # read data
         filt_ephys = self.get_data_iterator(
-            client=r, 
-            stub_test=stub_test, 
+            client=r,
+            stub_test=stub_test,
             chunk_size=chunk_size,
             use_chunk_iterator=use_chunk_iterator,
             iterator_opts=iterator_opts,
         )
-        
+
         # get filtering info
         data = json.loads(r.xrange("supergraph_stream")[0][1][b"data"])
         try:  # shouldn't fail but just in case
@@ -229,12 +231,12 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
                 f"and upper cutoff {butter_uppercut or 'inf'} Hz."
             )
         description = f"Filtered continuous ecephys data."
-        
+
         # get processing module
         module_name = "ecephys"
-        module_description = "Intermediate data from extracellular electrophysiology recordings, e.g., LFP." 
+        module_description = "Intermediate data from extracellular electrophysiology recordings, e.g., LFP."
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
-        
+
         # add to nwbfile
         table_ids = list(range(len(nwbfile.electrodes)))
         electrode_table_region = nwbfile.create_electrode_table_region(
@@ -261,10 +263,11 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
 
         return nwbfile
 
-    
+
 class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
     """Smoothed spiking band power interface for Stavisky Redis conversion"""
-    default_data_kwargs: dict = dict(dtype="float32", encoding="buffer", shape=(1,256))
+
+    default_data_kwargs: dict = dict(dtype="float32", encoding="buffer", shape=(1, 256))
 
     def __init__(
         self,
@@ -285,9 +288,9 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
         chunk_size: Optional[int] = None,
     ):
         super().__init__(
-            port=port, 
-            host=host, 
-            stream_name=stream_name, 
+            port=port,
+            host=host,
+            stream_name=stream_name,
             data_field=data_field,
             ts_key=ts_key,
             frames_per_entry=frames_per_entry,
@@ -320,13 +323,13 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
 
         # read data
         sbp = self.get_data_iterator(
-            client=r, 
-            stub_test=stub_test, 
+            client=r,
+            stub_test=stub_test,
             chunk_size=chunk_size,
             use_chunk_iterator=use_chunk_iterator,
             iterator_opts=iterator_opts,
         )
-        
+
         # get metadata about filtering, etc.
         bin_size = int(self.source_data["stream_name"].split("_")[-1].strip("ms"))
         frequency = 1000 / bin_size
@@ -340,7 +343,7 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
         butter_uppercut = params.get("butter_uppercut", None)
         butter_order = params.get("butter_order", None)
         clip_value = params.get("spike_pow_clip_thresh", None)
-        
+
         try:
             params = data["nodes"]["b2s_preprocess10s"]["parameters"]
         except Exception as e:
@@ -373,9 +376,9 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
 
         # get processing module
         module_name = "ecephys"
-        module_description = "Intermediate data from extracellular electrophysiology recordings, e.g., LFP." 
+        module_description = "Intermediate data from extracellular electrophysiology recordings, e.g., LFP."
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
-        
+
         # add to nwbfile
         dataclass_kwargs = dict(
             unit="V^2",
@@ -389,7 +392,7 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
             dataclass_kwargs=dataclass_kwargs,
             stub_test=stub_test,
         )
-        
+
         # close redis client
         r.close()
 
@@ -398,7 +401,8 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
 
 class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface):
     """Smoothed threshold crossing interface for Stavisky conversion"""
-    default_data_kwargs: dict = dict(dtype="float32", encoding="buffer", shape=(1,256))
+
+    default_data_kwargs: dict = dict(dtype="float32", encoding="buffer", shape=(1, 256))
 
     def __init__(
         self,
@@ -419,9 +423,9 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
         chunk_size: Optional[int] = None,
     ):
         super().__init__(
-            port=port, 
-            host=host, 
-            stream_name=stream_name, 
+            port=port,
+            host=host,
+            stream_name=stream_name,
             data_field=data_field,
             ts_key=ts_key,
             frames_per_entry=frames_per_entry,
@@ -451,16 +455,16 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
             host=self.source_data["host"],
         )
         r.ping()
-        
+
         # read data
         thresh_cross = self.get_data_iterator(
-            client=r, 
-            stub_test=stub_test, 
+            client=r,
+            stub_test=stub_test,
             chunk_size=chunk_size,
             use_chunk_iterator=use_chunk_iterator,
             iterator_opts=iterator_opts,
         )
-        
+
         data = json.loads(r.xrange("supergraph_stream")[0][1][b"data"])
         try:
             params = data["nodes"]["b2s_preprocess10s"]["parameters"]
@@ -488,13 +492,13 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
 
         # get processing module
         module_name = "ecephys"
-        module_description = "Intermediate data from extracellular electrophysiology recordings, e.g., LFP." 
+        module_description = "Intermediate data from extracellular electrophysiology recordings, e.g., LFP."
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
-        
+
         # add to nwbfile
         dataclass_kwargs = dict(
             unit="n/a",
-            conversion=1.,
+            conversion=1.0,
             description=description,
         )
         self.add_to_processing_module(
@@ -504,7 +508,7 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
             dataclass_kwargs=dataclass_kwargs,
             stub_test=stub_test,
         )
-        
+
         # close redis client
         r.close()
 

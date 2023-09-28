@@ -301,9 +301,9 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         nsp_timestamps = self.get_timestamps(nsp=True)
         data_len = data._get_maxshape()[0] if isinstance(data, RedisDataChunkIterator) else data.shape[0]
         if stub_test:
-            timestamps = timestamps[: data_len]
+            timestamps = timestamps[:data_len]
             if nsp_timestamps is not None:
-                nsp_timestamps = nsp_timestamps[: data_len]
+                nsp_timestamps = nsp_timestamps[:data_len]
         assert len(timestamps) == data_len, "Timestamps and data have different lengths!"
         if nsp_timestamps is not None:
             assert len(nsp_timestamps) == data_len, "Timestamps and data have different lengths!"
