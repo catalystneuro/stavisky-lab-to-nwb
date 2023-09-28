@@ -75,3 +75,8 @@ class BrainToTextNWBConverter(NWBConverter):
                     )
                 else:
                     interface.set_aligned_timestamps(None, nsp=True)
+        # align other data fields
+        if "PhonemeLogits" in self.data_interface_objects:
+            self.data_interface_objects["PhonemeLogits"].set_aligned_starting_time(-self.session_start_time)
+        if "DecodedText" in self.data_interface_objects:
+            self.data_interface_objects["DecodedText"].set_aligned_starting_time(-self.session_start_time)
