@@ -61,5 +61,17 @@ class BrainToTextNWBConverter(NWBConverter):
                 self.data_interface_objects["Sorting"].sorting_extractor.set_clock("redis")
                 self.data_interface_objects["Sorting"].set_aligned_starting_time(-self.session_start_time, nsp=False)
                 self.data_interface_objects["Sorting"].set_dtype("float64", nsp=False)
+        # align trial times
         if "Trials" in self.data_interface_objects:
             self.data_interface_objects["Trials"].set_aligned_starting_time(-self.session_start_time, clock="redis")
+            if "Recording" in self.data_interface_objects:
+                self.data_interface_objects["Trials"].align_by_interpolation(
+                    unaligned_timestamps=nsp_neural_clock,
+                    aligned_timestamps=redis_neural_clock,
+                    clock="nsp_neural",
+                )
+        # align other data fields
+        if "PhonemeLogits" in self.data_interface_objects:
+            self.data_interface_objects["PhonemeLogits"].set_aligned_starting_time(-self.session_start_time)
+        if "DecodedText" in self.data_interface_objects:
+            self.data_interface_objects["DecodedText"].set_aligned_starting_time(-self.session_start_time)
