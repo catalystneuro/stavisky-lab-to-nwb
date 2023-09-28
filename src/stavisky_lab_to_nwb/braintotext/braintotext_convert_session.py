@@ -71,30 +71,38 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     )
 
     # Add Sorting
-    # source_data.update(
-    #     dict(
-    #         Sorting=dict(
-    #             port=port,
-    #             host=host,
-    #             stream_name="neuralFeatures_1ms",
-    #             data_key="threshold_crossings",
-    #             dtype="int16",
-    #             frames_per_entry=1,
-    #             timestamp_source="redis",
-    #             timestamp_kwargs={"smoothing_window": "max", "chunk_size": 50000},
-    #         )
-    #     )
-    # )
-    # conversion_options.update(
-    #     dict(
-    #         Sorting=dict(
-    #             units_description=(
-    #                 "Unsorted threshold crossings binned at 1 ms resolution for each recording channel."
-    #             ),
-    #             stub_test=stub_test,
-    #         )
-    #     )
-    # )
+    source_data.update(
+        dict(
+            Sorting=dict(
+                port=port,
+                host=host,
+                stream_name="binnedFeatures_10ms",
+                data_field="threshold_crossings",
+                data_dtype="int16",
+                frames_per_entry=1,
+                timestamp_field="input_nsp_timestamp",
+                timestamp_kwargs=dict(
+                    timestamp_conversion=1./3.0e4,
+                    timestamp_encoding="buffer",
+                    timestamp_dtype="int64",
+                    timestamp_index=0,
+                ),
+                chunk_size=50000,
+                clock="nsp",
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            Sorting=dict(
+                units_description=(
+                    "Unsorted threshold crossings binned at 10 ms resolution for each recording channel."
+                ),
+                write_as="processing",
+                stub_test=stub_test,
+            )
+        )
+    )
 
     # Add SpikingBandPower 1 ms resolution
     # source_data.update(

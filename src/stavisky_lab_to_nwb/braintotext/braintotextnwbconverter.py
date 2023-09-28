@@ -7,6 +7,7 @@ from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 
 from stavisky_lab_to_nwb.general_interfaces import (
     StaviskyRecordingInterface,
+    StaviskySortingInterface,
 )
 
 from stavisky_lab_to_nwb.braintotext import (
@@ -21,7 +22,7 @@ class BrainToTextNWBConverter(NWBConverter):
 
     data_interface_classes = dict(
         Recording=StaviskyRecordingInterface,
-        # Sorting=StaviskySortingInterface,
+        Sorting=StaviskySortingInterface,
         Trials=BrainToTextTrialsInterface,
         # SpikingBandPower1ms=StaviskySpikingBandPowerInterface,
         # SpikingBandPower20ms=StaviskySpikingBandPowerInterface,
@@ -48,5 +49,17 @@ class BrainToTextNWBConverter(NWBConverter):
             redis_neural_clock = (redis_neural_clock - self.session_start_time).astype("float64")
             nsp_neural_clock = self.data_interface_objects["Recording"].get_timestamps(nsp=True).astype("float64")
             self.data_interface_objects["Recording"].set_aligned_timestamps(redis_neural_clock, nsp=False)
+        # align sorting timestamps by recording or session start time
+        if "Sorting" in self.data_interface_objects:
+            if "Recording" in self.data_interface_objects:
+                self.data_interface_objects["Sorting"].align_by_interpolation(
+                    unaligned_timestamps=nsp_neural_clock,
+                    aligned_timestamps=redis_neural_clock,
+                    nsp=True,
+                )
+            else:
+                self.data_interface_objects["Sorting"].sorting_extractor.set_clock("redis")
+                self.data_interface_objects["Sorting"].set_aligned_starting_time(-self.session_start_time, nsp=False)
+                self.data_interface_objects["Sorting"].set_dtype("float64", nsp=False)
         if "Trials" in self.data_interface_objects:
             self.data_interface_objects["Trials"].set_aligned_starting_time(-self.session_start_time, clock="redis")

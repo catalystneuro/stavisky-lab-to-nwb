@@ -6,23 +6,27 @@ from typing import Union, Optional, List, Tuple, Literal
 from warnings import warn
 
 from spikeinterface.core import BaseSorting, BaseSortingSegment, BaseRecording
-from stavisky_lab_to_nwb.redis_interfaces.redisextractormixin import RedisExtractorMixin
+from ...utils.redis import read_entry
+from ...utils.timestamps import get_stream_ids_and_timestamps
 
 
-class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
+class RedisStreamSortingExtractor(BaseSorting):
     def __init__(
         self,
         port: int,
         host: str,
         stream_name: str,
-        data_key: Union[bytes, str],
-        dtype: Union[str, type, np.dtype],
+        data_field: Union[bytes, str],
+        data_dtype: Union[str, type, np.dtype],
         unit_ids: Optional[list] = None,
         frames_per_entry: int = 1,
         sampling_frequency: Optional[float] = None,
-        timestamp_source: Optional[Union[bytes, str]] = None,
-        timestamp_kwargs: dict = {},
+        timestamp_field: Optional[str] = None,
+        timestamp_kwargs: dict = dict(),
+        smoothing_kwargs: dict = dict(),
         unit_dim: int = 0,
+        clock: Literal["redis", "nsp"] = "nsp",
+        chunk_size: int = 10000,
     ):
         """Initialize the RedisStreamRecordingExtractor
 
@@ -34,7 +38,7 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             Host name for Redis server, e.g. "localhost"
         stream_name : str
             Name of stream containing the recording data
-        data_key : bytes or str
+        data_field : bytes or str
             Key or field within each Redis stream entry that
             contains the recording data
         dtype : str, type, or numpy.dtype
@@ -72,30 +76,45 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             host=host,
         )
         self._client.ping()
+        self._clock = clock
 
         # check args and data validity
         stream_len = self._client.xlen(stream_name)
         assert stream_len > 0, "Stream has length 0"
-        data_key = bytes(data_key, "utf-8") if isinstance(data_key, str) else data_key
 
         # get entry IDs and timestamps
-        sampling_frequency, timestamps, entry_ids = self.get_ids_and_timestamps(
+        entry_ids, timestamps, nsp_timestamps = get_stream_ids_and_timestamps(
+            client=self._client,
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
-            sampling_frequency=sampling_frequency,
-            timestamp_source=timestamp_source,
+            timestamp_field=timestamp_field,
+            chunk_size=chunk_size,
             **timestamp_kwargs,
         )
+        if smoothing_kwargs:
+            timestamps = smooth_timestamps(
+                timestamps, 
+                frames_per_entry=frames_per_entry,
+                sampling_frequency=sampling_frequency, 
+                **smoothing_kwargs
+            )
+        if sampling_frequency is None:
+            sampling_frequency = np.round(1. / np.mean(np.diff(timestamps)), 8)
 
         # Construct unit IDs if not provided
-        entry_data = self._client.xrange(stream_name, count=1)[0][1]
-        data_size = np.frombuffer(entry_data[data_key], dtype=dtype).size
+        entry = self._client.xrange(stream_name, count=1)[0][1]
+        data_size = read_entry(entry, data_field, dtype=data_dtype, encoding="buffer").size
         assert data_size % frames_per_entry == 0, "Size of Redis array must be multiple of frames_per_entry"
         unit_count = data_size // frames_per_entry
         if unit_ids is None:
             unit_ids = np.arange(unit_count, dtype=int).tolist()
         else:
-            assert len(unit_ids) == unit_count, "Detected more units than the number of unit IDS provided"
+            assert len(unit_ids) == unit_count, "Detected more units than the number of unit IDs provided"
+        
+        # set up data reading args
+        shape = (frames_per_entry, unit_count) if unit_dim == 1 else (unit_count, frames_per_entry)
+        transpose = (unit_dim == 0)
+        data_kwargs = dict(encoding="buffer", shape=shape, transpose=transpose)
 
         # Initialize Sorting and SortingSegment
         # NOTE: does not support multiple segments, assumes continuous recording for whole stream
@@ -103,14 +122,16 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         sorting_segment = RedisStreamSortingSegment(
             client=self._client,
             stream_name=stream_name,
-            data_key=data_key,
-            dtype=dtype,
+            data_field=data_field,
+            data_dtype=data_dtype,
+            data_kwargs=data_kwargs,
             unit_ids=unit_ids,
             entry_ids=entry_ids,
-            frames_per_entry=frames_per_entry,
             timestamps=timestamps,
+            nsp_timestamps=nsp_timestamps,
+            frames_per_entry=frames_per_entry,
             t_start=None,
-            unit_dim=unit_dim,
+            chunk_size=chunk_size,
         )
         self.add_sorting_segment(sorting_segment)
 
@@ -119,12 +140,9 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             "port": port,
             "host": host,
             "stream_name": stream_name,
-            "data_key": data_key,
-            "unit_count": unit_count,
-            "dtype": dtype,
+            "data_field": data_field,
+            "data_dtype": data_dtype,
             "frames_per_entry": frames_per_entry,
-            "timestamp_source": timestamp_source,
-            # "timestamp_kwargs": timestamp_kwargs,
         }
 
     def get_unit_spike_train(
@@ -134,6 +152,7 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
         start_frame: Union[int, None] = None,
         end_frame: Union[int, None] = None,
         return_times: bool = False,
+        clock: Optional[Literal["redis", "nsp"]] = None,
     ):
         """Get spike train for a particular unit.
         Overriding base class method so that timestamps can
@@ -171,7 +190,11 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
             return spike_frames
         else:
             segment = self._sorting_segments[segment_index]
-            times = segment.get_times().astype("float64")
+            clock = clock or self._clock
+            if clock == "redis":
+                times = segment.get_times().astype("float64")
+            else:
+                times = segment.get_nsp_times().astype("float64")
             return times[spike_frames]
 
     def get_times(self, segment_index=None):
@@ -230,21 +253,64 @@ class RedisStreamSortingExtractor(BaseSorting, RedisExtractorMixin):
                     "Use use this carefully!"
                 )
 
+    def get_nsp_times(self, segment_index=None):
+        if self.has_recording():
+            return self._recording.get_nsp_times(segment_index=segment_index)
+        segment_index = self._check_segment_index(segment_index)
+        segment = self._sorting_segments[segment_index]
+        times = segment.get_nsp_times()
+        return times
+
+    def set_nsp_times(self, times, segment_index=None, with_warning=True):
+        if self.has_recording():
+            self._recording.set_nsp_times(times=times, segment_index=segment_index, with_warning=with_warning)
+        else:
+            segment_index = self._check_segment_index(segment_index)
+            rs = self._sorting_segments[segment_index]
+
+            assert times.ndim == 1, "Time must have ndim=1"
+            assert rs.get_num_samples() == times.shape[0], "times have wrong shape"
+
+            rs._nsp_timestamps = times.astype("float64")
+
+            if with_warning:
+                warn(
+                    "Setting times with Recording.set_nsp_times() is not recommended because "
+                    "times are not always propagated to across preprocessing"
+                    "Use use this carefully!"
+                )
+    
+    def get_entry_ids(self, segment_index=None):
+        segment_index = self._check_segment_index(segment_index)
+        segment = self._sorting_segments[segment_index]
+        entry_ids = segment.get_entry_ids()
+        return entry_ids
+    
+    def get_clock(self):
+        return self._clock
+    
+    def set_clock(self, clock):
+        assert clock in ["redis", "nsp"]
+        self._clock = clock
+
 
 class RedisStreamSortingSegment(BaseSortingSegment):
     def __init__(
         self,
         client: redis.Redis,
         stream_name: str,
-        data_key: Union[bytes, str],
-        dtype: Union[str, type, np.dtype],
+        data_field: Union[bytes, str],
+        data_dtype: Union[str, type, np.dtype],
+        data_kwargs: dict,
         unit_ids: list,
         entry_ids: list[bytes],
         frames_per_entry: int = 1,
         timestamps: Optional[np.ndarray] = None,
+        nsp_timestamps: Optional[np.ndarray] = None,
         t_start: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
         unit_dim: int = 0,
+        chunk_size: int = 1000,
     ):
         """Initialize the RedisStreamRecordingSegment
 
@@ -254,10 +320,10 @@ class RedisStreamSortingSegment(BaseSortingSegment):
             Redis client connected to Redis server containing data
         stream_name : str
             Name of stream containing the recording data
-        data_key : bytes or str
+        data_field : bytes or str
             Key or field within each Redis stream entry that
             contains the recording data
-        dtype : str, type, or numpy.dtype
+        data_dtype : str, type, or numpy.dtype
             The dtype of the data. Assumed to be a numeric type
             recognized by numpy, e.g. int8, float32, etc.
         unit_ids : list
@@ -305,19 +371,20 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         assert len(entry_ids) == self._client.xlen(stream_name)
 
         # save some variables
+        self._nsp_timestamps = nsp_timestamps
         self._stream_name = stream_name
-        self._data_key = bytes(data_key, "utf-8") if isinstance(data_key, str) else data_key
-        self._dtype = dtype
+        self._data_field = data_field
+        self._data_dtype = data_dtype
+        self._data_kwargs = data_kwargs
         self._unit_count = len(unit_ids)
         self._unit_ids = unit_ids
-        self._unit_dim = unit_dim
         self._entry_ids = entry_ids
         self._frames_per_entry = frames_per_entry
         self._num_samples = frames_per_entry * len(entry_ids)
 
         # make chunk size an init arg?
         self._spike_frames = None
-        self._load_spike_frames(chunk_size=1000)
+        self._load_spike_frames(chunk_size=chunk_size)
 
     def _load_spike_frames(self, chunk_size: int = 1000):
         # initialize loop variables
@@ -330,16 +397,8 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         while len(stream_entries) > 0:
             for entry in stream_entries:
                 # read data and check expected size
-                entry_data = np.frombuffer(entry[1][self._data_key], dtype=self._dtype)
-                assert entry_data.size == (self._frames_per_entry * self._unit_count)
-                # reshape array to 2d
-                if self._frames_per_entry > 1:
-                    if self._unit_dim == 0:
-                        entry_data = entry_data.reshape((self._unit_count, self._frames_per_entry)).T
-                    elif self._unit_dim == 1:
-                        entry_data = entry_data.reshape((self._frames_per_entry, self._unit_count))
-                else:
-                    entry_data = entry_data[None, :]
+                entry_data = read_entry(entry[1], self._data_field, dtype=self._data_dtype, **self._data_kwargs)
+                assert entry_data.shape == (self._frames_per_entry, self._unit_count)
                 # find nonzero entries
                 stime, scolumn = np.nonzero(entry_data)
                 # if spike count > 1, repeat that frame
@@ -364,6 +423,9 @@ class RedisStreamSortingSegment(BaseSortingSegment):
     def get_num_samples(self) -> int:
         return self._num_samples
 
+    def get_entry_ids(self):
+        return self._entry_ids
+
     def get_times(self):
         if self.time_vector is not None:
             if isinstance(self.time_vector, np.ndarray):
@@ -376,6 +438,9 @@ class RedisStreamSortingSegment(BaseSortingSegment):
             if self.t_start is not None:
                 time_vector += self.t_start
             return time_vector
+    
+    def get_nsp_times(self):
+        return self._nsp_timestamps
 
     def get_unit_spike_train(
         self,
