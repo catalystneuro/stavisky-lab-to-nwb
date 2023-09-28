@@ -158,8 +158,8 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     )
 
     # Add Trials
-    # source_data.update(dict(Trials=dict(port=port, host=host)))
-    # conversion_options.update(dict(Trials=dict(stub_test=stub_test)))
+    source_data.update(dict(Trials=dict(port=port, host=host)))
+    conversion_options.update(dict(Trials=dict()))
 
     # Add Decoding
     source_data.update(dict(PhonemeLogits=dict(port=port, host=host)))
