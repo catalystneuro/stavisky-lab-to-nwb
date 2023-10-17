@@ -5,13 +5,13 @@ import json
 import numpy as np
 import redis
 
-from ..general_interfaces import StaviskyTemporalAlignmentInterface
+from .staviskytemporalalignmentinterface import StaviskyTemporalAlignmentInterface
 
 
 class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
     default_data_kwargs: dict = dict(dtype="int16", encoding="buffer", shape=(30, 2))
 
-    def __init__(  # TODO: smooth timestamps somehow
+    def __init__(
         self,
         port: int,
         host: str,
@@ -54,6 +54,8 @@ class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         chunk_size: Optional[int] = None,
+        iterator_opts: dict = {},
+        chunk_size: Optional[int] = None,
     ):
         # Instantiate Redis client and check connection
         r = redis.Redis(
@@ -65,9 +67,20 @@ class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
         # read data
         stream_name = self.source_data["stream_name"]
         data_field = self.source_data["data_field"]
-        analog = self.get_data_iterator(client=r, stub_test=stub_test, chunk_size=chunk_size)
-        assert len(np.unique(analog[:, 1])) == 1
-        analog = analog[:, 0]  # drop second channel as it has only one value
+        analog = self.get_data_iterator(
+            client=r,
+            stub_test=stub_test,
+            chunk_size=chunk_size,
+            use_chunk_iterator=use_chunk_iterator,
+            iterator_opts=iterator_opts,
+        )
+        single_value_columns = np.array([(len(np.unique(analog[:,i])) == 1) for i in range(analog.shape[-1])])
+        if np.any(single_value_columns):
+            print(f"Dropping columns {np.nonzero(single_value_columns)[0]} as they have only one unique value")
+            analog = analog[:, ~single_value_columns]
+            if analog.shape[-1] == 0:
+                print(f"All data dropped. Skipping this data stream...")
+                return
 
         # stub timestamps if necessary
         timestamps = self.get_timestamps(nsp=False)

@@ -8,13 +8,13 @@ from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from stavisky_lab_to_nwb.general_interfaces import (
     StaviskyRecordingInterface,
     StaviskySortingInterface,
+    StaviskyAudioInterface
 )
 
 from stavisky_lab_to_nwb.braintotext import (
     BrainToTextPhonemeLogitsInterface,
     BrainToTextDecodedTextInterface,
     BrainToTextTrialsInterface,
-    BrainToTextAudioInterface,
 )
 
 
@@ -27,7 +27,7 @@ class BrainToTextNWBConverter(NWBConverter):
         Trials=BrainToTextTrialsInterface,
         # SpikingBandPower1ms=StaviskySpikingBandPowerInterface,
         # SpikingBandPower20ms=StaviskySpikingBandPowerInterface,
-        Audio=BrainToTextAudioInterface,
+        Audio=StaviskyAudioInterface,
         PhonemeLogits=BrainToTextPhonemeLogitsInterface,
         DecodedText=BrainToTextDecodedTextInterface,
     )
@@ -79,6 +79,12 @@ class BrainToTextNWBConverter(NWBConverter):
                     unaligned_timestamps=nsp_neural_clock,
                     aligned_timestamps=redis_neural_clock,
                     clock="nsp_neural",
+                )
+            if "Audio" in self.data_interface_objects:
+                self.data_interface_objects["Trials"].align_by_interpolation(
+                    unaligned_timestamps=nsp_analog_clock,
+                    aligned_timestamps=redis_analog_clock,
+                    clock="nsp_analog",
                 )
         # align other data fields
         if "PhonemeLogits" in self.data_interface_objects:
