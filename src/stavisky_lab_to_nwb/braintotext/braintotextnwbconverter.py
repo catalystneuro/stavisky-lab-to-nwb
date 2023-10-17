@@ -8,7 +8,7 @@ from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from stavisky_lab_to_nwb.general_interfaces import (
     StaviskyRecordingInterface,
     StaviskySortingInterface,
-    StaviskyAudioInterface
+    StaviskyAudioInterface,
 )
 
 from stavisky_lab_to_nwb.braintotext import (

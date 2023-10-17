@@ -74,7 +74,7 @@ class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
             use_chunk_iterator=use_chunk_iterator,
             iterator_opts=iterator_opts,
         )
-        single_value_columns = np.array([(len(np.unique(analog[:,i])) == 1) for i in range(analog.shape[-1])])
+        single_value_columns = np.array([(len(np.unique(analog[:, i])) == 1) for i in range(analog.shape[-1])])
         if np.any(single_value_columns):
             print(f"Dropping columns {np.nonzero(single_value_columns)[0]} as they have only one unique value")
             analog = analog[:, ~single_value_columns]
