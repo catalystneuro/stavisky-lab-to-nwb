@@ -1,6 +1,7 @@
 from pynwb import NWBFile, TimeSeries
 from ndx_sound import AcousticWaveformSeries
 from typing import Optional, Union
+from hdmf.backends.hdf5 import H5DataIO
 import json
 import numpy as np
 import redis
@@ -8,7 +9,7 @@ import redis
 from .staviskytemporalalignmentinterface import StaviskyTemporalAlignmentInterface
 
 
-class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
+class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
     default_data_kwargs: dict = dict(dtype="int16", encoding="buffer", shape=(30, 2))
 
     def __init__(
@@ -17,7 +18,7 @@ class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
         host: str,
         stream_name: str,
         data_field: str,
-        ts_key: str = "audio",
+        ts_key: str = "AudioSeries",
         frames_per_entry: int = 30,
         data_dtype: Optional[str] = None,
         data_kwargs: dict = dict(),
@@ -118,7 +119,7 @@ class BrainToTextAudioInterface(StaviskyTemporalAlignmentInterface):
         )
 
         data_interface = dataclass(
-            data=analog,
+            data=H5DataIO(analog, compression="gzip"),
             name=self.ts_key,
             **dataclass_kwargs,
         )
