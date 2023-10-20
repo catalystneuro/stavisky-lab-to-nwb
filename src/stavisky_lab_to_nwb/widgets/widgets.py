@@ -214,7 +214,7 @@ def show_aligned_traces(
 class AlignedAveragedTimeSeriesWidget(widgets.VBox):
     def __init__(
         self,
-        time_series: TimeSeries,
+        time_series: TimeSeries = None,
         trials: TimeIntervals = None,
         processing_module: ProcessingModule = None,
         trace_index=0,
@@ -223,6 +223,15 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
         sem=True,
         gap_scale=10.,
     ):
+        if time_series is None:
+            assert processing_module is not None, \
+                "At least one of `time_series` or `processing_module` should be provided."
+            for key in processing_module.data_interfaces.keys():
+                if isinstance(processing_module.data_interfaces[key], TimeSeries):
+                    time_series = processing_module.data_interfaces[key]
+                    break
+            assert time_series is not None, \
+                "No TimeSeries found in `processing_module`"
         self.time_series = time_series
         self.time_series_data = time_series.data[()]
         self.time_series_timestamps = None
@@ -249,7 +258,7 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
             self.interface_controller = widgets.Dropdown(
                 options=ts_keys,
                 value=ts_keys[0],
-                description="interface:",
+                description="data stream:",
             )
         else:
             self.processing_module = None
@@ -427,18 +436,35 @@ PHONEMES = ["\" \"", "<s>", "AA", "AE", "AH", "AO", "AW", "AY", "B", "CH",
 
 strikethrough = lambda x: ''.join([(c + '\u0336') for c in x])
 
+def zero_pad_edges(
+    timestamps: np.ndarray,
+    data: np.ndarray,
+    gap_threshold: float = 4.0,
+):
+    median_diff = np.median(np.diff(timestamps))
+    cutoff = median_diff * gap_threshold
+    gap_idx = np.nonzero(np.diff(timestamps) > cutoff)[0]
+    if len(gap_idx) > 0:
+        right_pad = timestamps[gap_idx] + median_diff
+        left_pad = timestamps[gap_idx + 1] - median_diff
+        cat_timestamps = np.concatenate([timestamps, right_pad, left_pad])
+        pad_order = np.argsort(cat_timestamps)
+        timestamps = np.sort(cat_timestamps)
+        data = np.concatenate([data, np.zeros((2*len(gap_idx), data.shape[-1]))], axis=0)[pad_order, :]
+        assert data.shape[0] == timestamps.shape[0], \
+            f"{gap_idx.shape[0]}, {right_pad.shape[0]}, {left_pad.shape[0]}, {data.shape[0]}, {timestamps.shape[0]}"
+    return timestamps, data
+
 def plot_overlaid_traces(
     time_series: TimeSeries,
     events=None,
     time_window=None,
     order=None,
+    angle=False,
     figsize=(8, 6),
-    group_inds=None,
     labels=None,
     cmap=None,
     show_legend=True,
-    dynamic_table_region_name=None,
-    window=None,
     transform=functools.partial(scipy.special.softmax, axis=1),
     text_diff=True,
 ):
@@ -479,14 +505,7 @@ def plot_overlaid_traces(
         else:
             order = [0]
 
-    if group_inds is not None:
-        row_ids = getattr(time_series, dynamic_table_region_name).data[:]
-        channel_inds = [np.argmax(row_ids == x) for x in order]
-    elif window is not None:
-        order = order[window[0] : window[1]]
-        channel_inds = order
-    else:
-        channel_inds = order
+    channel_inds = order
 
     if len(channel_inds):
         mini_data, tt, offsets = _prep_timeseries(time_series, time_window, channel_inds)
@@ -500,6 +519,7 @@ def plot_overlaid_traces(
 
     mini_data -= offsets
     mini_data = transform(mini_data)
+    tt, mini_data = zero_pad_edges(tt, mini_data)
 
     for i in range(mini_data.shape[1]):
         ax.plot(tt, mini_data[:, i], c=cmap(i / mini_data.shape[1]))
@@ -523,6 +543,9 @@ def plot_overlaid_traces(
             event_ind_start = ts.timeseries_time_to_ind(events, time_window[0])
             event_ind_stop = ts.timeseries_time_to_ind(events, time_window[1])
     if (event_ind_stop - event_ind_start) > 0:
+        rotation = 45 if angle else 0
+        ha = 'left' if angle else 'center'
+        va = ['top', 'bottom'] if angle else ['center', 'center']
         for i in range(event_ind_start, event_ind_stop):
             ax_ev.scatter(events.timestamps[i], 0, marker="|", color="black")
             event_label = event_labels[events.data[i].astype(int)]
@@ -540,7 +563,16 @@ def plot_overlaid_traces(
                     (el if el in final_sentence else strikethrough(el))
                     for el in event_label.split()
                 ])
-            ax_ev.text(events.timestamps[i], 0.5 * ((i % 2) - 0.5), event_label, ha='center', va='center')
+            
+            ax_ev.text(
+                events.timestamps[i], 
+                0.5 * ((i % 2) - 0.5), 
+                event_label, 
+                rotation=rotation * (2*((i % 2) - 0.5)),
+                ha=ha, 
+                va=va[(i % 2)],
+                rotation_mode="anchor",
+            )
     
     return fig
 
@@ -550,9 +582,6 @@ class DecodingOutputWidget(widgets.HBox):
         self,
         time_series: TimeSeries,
         events: LabeledEvents = None,
-        dynamic_table_region_name=None,
-        foreign_time_window_controller: StartAndDurationController = None,
-        foreign_group_and_sort_controller: GroupAndSortController = None,
         mpl_plotter=plot_overlaid_traces,
     ):
         """
@@ -565,78 +594,43 @@ class DecodingOutputWidget(widgets.HBox):
         foreign_group_and_sort_controller: GroupAndSortController, optional
         mpl_plotter: function
             Choose function to use when creating figures
-        kwargs
         """
-
-        if dynamic_table_region_name is not None and foreign_group_and_sort_controller is not None:
-            raise TypeError(
-                "You cannot supply both `dynamic_table_region_name` and `foreign_group_and_sort_controller`."
-            )
 
         super().__init__()
         self.time_series = time_series
         self.events = events
-
-        if foreign_time_window_controller is not None:
-            self.time_window_controller = foreign_time_window_controller
-        else:
-            self.tmin = ts.get_timeseries_mint(time_series)
-            self.tmax = ts.get_timeseries_maxt(time_series)
-            self.time_window_controller = StartAndDurationController(tmin=self.tmin, tmax=self.tmax)
+        
+        self.tmin = ts.get_timeseries_mint(time_series)
+        self.tmax = ts.get_timeseries_maxt(time_series)
+        self.time_window_controller = StartAndDurationController(tmin=self.tmin, tmax=self.tmax)
 
         self.controls = dict(
             time_series=widgets.fixed(self.time_series),
             events=widgets.fixed(self.events),
             time_window=self.time_window_controller,
-            dynamic_table_region_name=widgets.fixed(dynamic_table_region_name),
         )
-        if foreign_group_and_sort_controller is None:
-            if dynamic_table_region_name is not None:
-                dynamic_table_region = getattr(time_series, dynamic_table_region_name)
-                table = dynamic_table_region.table
-                referenced_rows = np.array(dynamic_table_region.data)
-                self.gas = GroupAndSortController(
-                    dynamic_table=table,
-                    keep_rows=referenced_rows,
-                )
-                self.controls.update(gas=self.gas)
-            else:
-                self.gas = None
-                range_controller_max = min(41, self.time_series.data.shape[1])
-                self.range_controller = RangeController(
-                    0,
-                    self.time_series.data.shape[1],
-                    start_value=(0, range_controller_max),
-                    dtype="int",
-                    description="traces",
-                    orientation="vertical",
-                )
-                self.controls.update(window=self.range_controller)
-        else:
-            self.gas = foreign_group_and_sort_controller
-            self.controls.update(gas=self.gas)
-
+        
+        self.angle_controller = widgets.Checkbox(
+            value=False,
+            description='Rotate text',
+            disabled=False,
+            indent=False,
+            layout=Layout(max_width="150px"),
+        )
+        self.controls.update(angle=self.angle_controller)
+        
         # Sets up interactive output controller
         out_fig = interactive_output(mpl_plotter, self.controls)
 
-        if foreign_time_window_controller:
-            right_panel = out_fig
-        else:
-            right_panel = widgets.VBox(
-                children=[
-                    self.time_window_controller,
-                    out_fig,
-                ],
-                layout=widgets.Layout(width="100%"),
-            )
+        right_panel = widgets.VBox(
+            children=[
+                widgets.HBox(children=[self.angle_controller, self.time_window_controller]),
+                out_fig,
+            ],
+            layout=widgets.Layout(width="100%"),
+        )
 
-        if foreign_group_and_sort_controller or self.gas is None:
-            if self.range_controller is None:
-                self.children = [right_panel]
-            else:
-                self.children = [self.range_controller, right_panel]
-        else:
-            self.children = [self.gas, right_panel]
+        self.children = [right_panel]
 
 
 def phoneme_timeintervals(

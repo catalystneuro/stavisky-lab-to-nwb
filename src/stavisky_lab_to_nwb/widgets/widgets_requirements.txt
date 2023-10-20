@@ -1,0 +1,4 @@
+nwbwidgets
+g2p_en
+ndx-events==0.2.0
+ndx-sound==0.2.0
