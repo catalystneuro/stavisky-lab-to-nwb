@@ -148,6 +148,32 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     #     )
     # )
 
+    # Add audio
+    source_data.update(
+        dict(
+            Audio=dict(
+                port=port,
+                host=host,
+                stream_name="continuousAnalog",
+                data_field="samples",
+                ts_key="audio",
+                nsp_timestamp_field="timestamps",
+                nsp_timestamp_conversion=1.0e-9,
+                nsp_timestamp_encoding="buffer",
+                nsp_timestamp_dtype="int64",
+                smoothing_kwargs=dict(window_len="max", sampling_frequency=3.0e4),
+                chunk_size=10000,
+            )
+        )
+    )
+    conversion_options.update(
+        dict(
+            Audio=dict(
+                stub_test=stub_test,
+            )
+        )
+    )
+
     # Add Trials
     source_data.update(dict(Trials=dict(port=port, host=host)))
     conversion_options.update(dict(Trials=dict()))
