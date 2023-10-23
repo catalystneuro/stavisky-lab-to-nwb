@@ -7,3 +7,4 @@ from .staviskyecephysinterface import (
     StaviskySmoothedSpikingBandPowerInterface,
     StaviskySmoothedThreshCrossingInterface,
 )
+from .staviskyaudiointerface import StaviskyAudioInterface

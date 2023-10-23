@@ -13,6 +13,7 @@ from stavisky_lab_to_nwb.general_interfaces import (
     StaviskyFilteredRecordingInterface,
     StaviskySmoothedSpikingBandPowerInterface,
     StaviskySmoothedThreshCrossingInterface,
+    StaviskyAudioInterface,
 )
 
 from stavisky_lab_to_nwb.braintotext import (
@@ -29,10 +30,11 @@ class BrainToTextNWBConverter(NWBConverter):
         Recording=StaviskyRecordingInterface,
         Sorting=StaviskySortingInterface,
         Trials=BrainToTextTrialsInterface,
-        SpikingBandPower10ms=StaviskySpikingBandPowerInterface,
-        SpikingBandPower20ms=StaviskySpikingBandPowerInterface,
+        Audio=StaviskyAudioInterface,
         PhonemeLogits=BrainToTextPhonemeLogitsInterface,
         DecodedText=BrainToTextDecodedTextInterface,
+        SpikingBandPower10ms=StaviskySpikingBandPowerInterface,
+        SpikingBandPower20ms=StaviskySpikingBandPowerInterface,
         FilteredRecording=StaviskyFilteredRecordingInterface,
         SmoothedSBP10ms=StaviskySmoothedSpikingBandPowerInterface,
         SmoothedTC10ms=StaviskySmoothedThreshCrossingInterface,
@@ -75,8 +77,16 @@ class BrainToTextNWBConverter(NWBConverter):
 
     def temporally_align_data_interfaces(self):
         # initialize common clock variables
+        redis_analog_clock = None
+        nsp_analog_clock = None
         redis_neural_clock = None
         nsp_neural_clock = None
+        # align audio start to session start time
+        if "Audio" in self.data_interface_objects:
+            redis_analog_clock = self.data_interface_objects["Audio"].get_timestamps(nsp=False)
+            redis_analog_clock = (redis_analog_clock - self.session_start_time).astype("float64")
+            nsp_analog_clock = self.data_interface_objects["Audio"].get_timestamps(nsp=True).astype("float64")
+            self.data_interface_objects["Audio"].set_aligned_timestamps(redis_analog_clock, nsp=False)
         # align recording start to session start time
         if "Recording" in self.data_interface_objects:
             redis_neural_clock = self.data_interface_objects["Recording"].get_timestamps(nsp=False)
@@ -103,6 +113,12 @@ class BrainToTextNWBConverter(NWBConverter):
                     unaligned_timestamps=nsp_neural_clock,
                     aligned_timestamps=redis_neural_clock,
                     clock="nsp_neural",
+                )
+            if "Audio" in self.data_interface_objects:
+                self.data_interface_objects["Trials"].align_by_interpolation(
+                    unaligned_timestamps=nsp_analog_clock,
+                    aligned_timestamps=redis_analog_clock,
+                    clock="nsp_analog",
                 )
         # align other ecephys data
         exclude_interfaces = ["Recording", "Audio", "Sorting", "Trials"]
