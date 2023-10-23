@@ -24,7 +24,7 @@ from nwbwidgets.timeseries import _prep_timeseries
 
 class MultiTableWidget(widgets.VBox):
     """Widget that displays multiple tables with a dropdown to switch between them"""
-    
+
     def __init__(self, names, tables):
         """
         Parameters
@@ -35,33 +35,33 @@ class MultiTableWidget(widgets.VBox):
             List of DataFrames to display, corresponding to `names`
         """
         assert len(names) == len(tables)
-        
+
         super().__init__()
         self.names = names
         self.tables = tables
-        
+
         if len(names) == 0:
             self.children = [widgets.HTML("No sessions found")]
             return
         if len(names) == 1:
             self.children = [DataGrid(tables[0])]
             return
-        
+
         self.session_controller = widgets.Dropdown(
             options=names,
             value=names[0],
-            description='Session:',
+            description="Session:",
             disabled=False,
         )
-        
+
         self.children = [self.session_controller, DataGrid(tables[0])]
-        
+
         def on_dropdown_update(change):
             idx = names.index(change.new)
             self.children[1] = DataGrid(tables[idx])
-        
+
         self.session_controller.observe(on_dropdown_update, "value")
-        
+
     def update(self, session: str):
         idx = self.names.index(session)
         return DataGrid(self.tables[idx])
@@ -70,7 +70,7 @@ class MultiTableWidget(widgets.VBox):
 class DecodingErrorWidget(widgets.Tab):
     """Widget that displays word error rate and phoneme error rate across sessions
     and per-trial within a session"""
-    
+
     def __init__(
         self,
         trials: Union[TimeIntervals, list[TimeIntervals]],
@@ -83,9 +83,10 @@ class DecodingErrorWidget(widgets.Tab):
         """
         super().__init__()
         from .wer import mean_wer, mean_per, sentences_to_phonemes
+
         if isinstance(trials, TimeIntervals):
             trials = [trials]
-        
+
         agg_name = []
         agg_wer = []
         agg_per = []
@@ -94,11 +95,11 @@ class DecodingErrorWidget(widgets.Tab):
             name = trial_table.get_ancestor("NWBFile").session_id
             wer, (sent_wer, sent_w) = mean_wer(
                 trial_table.decoded_sentence[()].tolist(),
-                trial_table.sentence_cue[()].tolist(), 
+                trial_table.sentence_cue[()].tolist(),
             )
             per, (sent_per, sent_p) = mean_per(
                 trial_table.decoded_sentence[()].tolist(),
-                trial_table.sentence_cue[()].tolist(), 
+                trial_table.sentence_cue[()].tolist(),
             )
             trnscrbd_decoded = sentences_to_phonemes(trial_table.decoded_sentence[()].tolist())
             trnscrbd_true = sentences_to_phonemes(trial_table.sentence_cue[()].tolist())
@@ -109,27 +110,27 @@ class DecodingErrorWidget(widgets.Tab):
                 decoded_phonemes=trnscrbd_decoded,
                 word_distance=sent_wer,
                 word_count=sent_w,
-                sentence_wer=[a/b for a, b in zip(sent_wer, sent_w)],
+                sentence_wer=[a / b for a, b in zip(sent_wer, sent_w)],
                 phoneme_distance=sent_per,
                 phoneme_count=sent_p,
-                sentence_per=[a/b for a, b in zip(sent_per, sent_p)],
+                sentence_per=[a / b for a, b in zip(sent_per, sent_p)],
             )
             agg_name.append(name)
             agg_wer.append(wer)
             agg_per.append(per)
             agg_table.append(pd.DataFrame(data_dict))
-        
+
         out = Output()
         with out:
             width = 1.0
             base_x = np.arange(len(agg_name)) * width * 3
-            plt.bar(base_x - width/2, agg_wer, width=width, label='WER')
-            plt.bar(base_x + width/2, agg_per, width=width, label='PER')
+            plt.bar(base_x - width / 2, agg_wer, width=width, label="WER")
+            plt.bar(base_x + width / 2, agg_per, width=width, label="PER")
             plt.legend()
-            plt.xlabel('Session')
+            plt.xlabel("Session")
             plt.xticks(ticks=base_x, labels=agg_name, rotation=0)
             plt.show()
-        
+
         self.children = [out, MultiTableWidget(agg_name, agg_table)]
         self.titles = ("Overview", "Session Results")
 
@@ -146,7 +147,7 @@ def show_aligned_traces(
     fontsize=12,
     overlay=True,
     figsize=(8, 6),
-    gap_scale=10.,
+    gap_scale=10.0,
 ):
     """Plots single-trial and mean TimeSeries data aligned to a given window"""
     if not len(data):
@@ -218,23 +219,23 @@ def show_aligned_traces(
         ax_single.plot(
             tt,
             data + lineoffset[None, :] * gap,
-            color='black',
+            color="black",
             linewidth=0.5,
         )
-        
+
         ax_mean.plot(
             tt,
             data.mean(axis=1),
-            color='black',
+            color="black",
         )
-    
+
     return ax_single, ax_mean
 
-        
+
 class AlignedAveragedTimeSeriesWidget(widgets.VBox):
-    """Extends PSTH alignment, grouping, and averaging functionality to 
+    """Extends PSTH alignment, grouping, and averaging functionality to
     generic TimeSeries within a processing module"""
-    
+
     def __init__(
         self,
         time_series: TimeSeries = None,
@@ -242,7 +243,7 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
         processing_module: ProcessingModule = None,
         trace_controller_kwargs=None,
         sem=True,
-        gap_scale=10.,
+        gap_scale=10.0,
     ):
         """
         Parameters
@@ -250,7 +251,7 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
         time_series : TimeSeries, optional
             A TimeSeries to plot. If not provided, `processing_module` must be provided.
         trials : TimeIntervals, optional
-            Trials table to use for alignment. If not provided, the parent file's 
+            Trials table to use for alignment. If not provided, the parent file's
             nwbfile.trials` will be used
         processing_module : ProcessingModule, optional
             The processing module to fetch TimeSeries from. If provided, all TimeSeries
@@ -262,14 +263,14 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
             Scaling factor for gaps between single-trial traces when not overlaid
         """
         if time_series is None:
-            assert processing_module is not None, \
-                "At least one of `time_series` or `processing_module` should be provided."
+            assert (
+                processing_module is not None
+            ), "At least one of `time_series` or `processing_module` should be provided."
             for key in processing_module.data_interfaces.keys():
                 if isinstance(processing_module.data_interfaces[key], TimeSeries):
                     time_series = processing_module.data_interfaces[key]
                     break
-            assert time_series is not None, \
-                "No TimeSeries found in `processing_module`"
+            assert time_series is not None, "No TimeSeries found in `processing_module`"
         self.time_series = time_series
         self.time_series_data = time_series.data[()]
         self.time_series_timestamps = None
@@ -286,11 +287,12 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
                 return
         else:
             self.trials = trials
-        
+
         if processing_module is not None:
             self.processing_module = processing_module
             ts_keys = [
-                key for key in processing_module.data_interfaces.keys() 
+                key
+                for key in processing_module.data_interfaces.keys()
                 if isinstance(processing_module.data_interfaces[key], TimeSeries)
             ]
             self.interface_controller = widgets.Dropdown(
@@ -359,8 +361,8 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
                         ]
                     ),
                     widgets.VBox(
-                        ([self.interface_controller] if self.interface_controller is not None else []) + 
-                        [
+                        ([self.interface_controller] if self.interface_controller is not None else [])
+                        + [
                             self.trace_controller,
                             self.trial_event_controller,
                             self.start_ft,
@@ -463,20 +465,59 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
         return fig
 
 
-PHONEMES = ["\" \"", "<s>", "AA", "AE", "AH", "AO", "AW", "AY", "B", "CH", 
-"D", "DH", "EH", "ER", "EY", "F", "G", "HH", "IH", 
-"IY", "JH", "K", "L", "M", "N", "NG", "OW", "OY", 
-"P", "R", "S", "SH", "T", "TH", "UH", "UW", "V", 
-"W", "Y", "Z", "ZH"]
+PHONEMES = [
+    '" "',
+    "<s>",
+    "AA",
+    "AE",
+    "AH",
+    "AO",
+    "AW",
+    "AY",
+    "B",
+    "CH",
+    "D",
+    "DH",
+    "EH",
+    "ER",
+    "EY",
+    "F",
+    "G",
+    "HH",
+    "IH",
+    "IY",
+    "JH",
+    "K",
+    "L",
+    "M",
+    "N",
+    "NG",
+    "OW",
+    "OY",
+    "P",
+    "R",
+    "S",
+    "SH",
+    "T",
+    "TH",
+    "UH",
+    "UW",
+    "V",
+    "W",
+    "Y",
+    "Z",
+    "ZH",
+]
 
-strikethrough = lambda x: ''.join([(c + '\u0336') for c in x])
+strikethrough = lambda x: "".join([(c + "\u0336") for c in x])
+
 
 def zero_pad_edges(
     timestamps: np.ndarray,
     data: np.ndarray,
     gap_threshold: float = 4.0,
 ):
-    """Helper function to prevent areas with no data from being 
+    """Helper function to prevent areas with no data from being
     interpolated incorrectly, by setting data to 0 at gap edges"""
     median_diff = np.median(np.diff(timestamps))
     cutoff = median_diff * gap_threshold
@@ -487,10 +528,12 @@ def zero_pad_edges(
         cat_timestamps = np.concatenate([timestamps, right_pad, left_pad])
         pad_order = np.argsort(cat_timestamps)
         timestamps = np.sort(cat_timestamps)
-        data = np.concatenate([data, np.zeros((2*len(gap_idx), data.shape[-1]))], axis=0)[pad_order, :]
-        assert data.shape[0] == timestamps.shape[0], \
-            f"{gap_idx.shape[0]}, {right_pad.shape[0]}, {left_pad.shape[0]}, {data.shape[0]}, {timestamps.shape[0]}"
+        data = np.concatenate([data, np.zeros((2 * len(gap_idx), data.shape[-1]))], axis=0)[pad_order, :]
+        assert (
+            data.shape[0] == timestamps.shape[0]
+        ), f"{gap_idx.shape[0]}, {right_pad.shape[0]}, {left_pad.shape[0]}, {data.shape[0]}, {timestamps.shape[0]}"
     return timestamps, data
+
 
 def plot_logit_traces(
     time_series: TimeSeries,
@@ -512,28 +555,28 @@ def plot_logit_traces(
         figsize = (figsize[0], figsize[1] * 1.1)
         fig, (ax_ev, ax) = plt.subplots(2, 1, figsize=figsize, height_ratios=[1, 10], sharex=True)
         ax_ev.set_ylim(-0.5, 0.5)
-        ax_ev.spines['top'].set_visible(False)
-        ax_ev.spines['right'].set_visible(False)
-        ax_ev.spines['bottom'].set_position('center')
-        ax_ev.spines['left'].set_visible(False)
+        ax_ev.spines["top"].set_visible(False)
+        ax_ev.spines["right"].set_visible(False)
+        ax_ev.spines["bottom"].set_position("center")
+        ax_ev.spines["left"].set_visible(False)
         ax_ev.set_yticks([])
-    
+
     ax.set_ylim(-0.05, 1.05)
     ax.set_xlim(*time_window)
     ax.set_xlabel("time (s)")
     ax.set_ylabel("probs")
-    
+
     if events is not None:
         if hasattr(events, "labels"):
             event_labels = events.labels
         else:
             event_labels = events.data__labels
-    
+
     if text_diff:
         trials = events.get_ancestor("NWBFile").trials
         if trials is None:
             text_diff = False
-    
+
     if cmap is None:
         cmap = plt.cm.rainbow
 
@@ -561,18 +604,18 @@ def plot_logit_traces(
 
     for i in range(mini_data.shape[1]):
         ax.plot(tt, mini_data[:, i], c=cmap(i / mini_data.shape[1]))
-        
+
     max_prob_idx = np.argmax(mini_data, axis=1)
     i = 0
     while i < len(max_prob_idx):
         n = 1
         while ((i + n) < len(max_prob_idx)) and (max_prob_idx[i] == max_prob_idx[i + n]):
             n += 1
-        text_idx = i + np.argmax(mini_data[i:i+n, max_prob_idx[i]])
+        text_idx = i + np.argmax(mini_data[i : i + n, max_prob_idx[i]])
         max_phoneme = PHONEMES[order[max_prob_idx[text_idx]]]
         ax.text(tt[text_idx], mini_data[text_idx, max_prob_idx[text_idx]] + 0.02, max_phoneme, ha="center")
         i += n
-    
+
     if events is not None:
         if time_window is None:
             event_ind_start = 0
@@ -582,36 +625,35 @@ def plot_logit_traces(
             event_ind_stop = ts.timeseries_time_to_ind(events, time_window[1])
     if (event_ind_stop - event_ind_start) > 0:
         rotation = 45 if angle else 0
-        ha = 'left' if angle else 'center'
-        va = ['top', 'bottom'] if angle else ['center', 'center']
+        ha = "left" if angle else "center"
+        va = ["top", "bottom"] if angle else ["center", "center"]
         for i in range(event_ind_start, event_ind_stop):
             ax_ev.scatter(events.timestamps[i], 0, marker="|", color="black")
             event_label = event_labels[events.data[i].astype(int)]
             if text_diff:
-                past_trial_idx = np.searchsorted(trials.stop_time[()], events.timestamps[i-1])
+                past_trial_idx = np.searchsorted(trials.stop_time[()], events.timestamps[i - 1])
                 trial_idx = np.searchsorted(trials.stop_time[()], events.timestamps[i])
                 if past_trial_idx == trial_idx:
                     if i > 0:
-                        past_labels = event_labels[events.data[i-1].astype(int)].split()
+                        past_labels = event_labels[events.data[i - 1].astype(int)].split()
                         for pl in past_labels:
                             if pl in event_label:
                                 event_label = event_label.partition(pl)[2].strip()
                 final_sentence = trials.decoded_sentence[trial_idx]
-                event_label = " ".join([
-                    (el if el in final_sentence else strikethrough(el))
-                    for el in event_label.split()
-                ])
-            
+                event_label = " ".join(
+                    [(el if el in final_sentence else strikethrough(el)) for el in event_label.split()]
+                )
+
             ax_ev.text(
-                events.timestamps[i], 
-                0.5 * ((i % 2) - 0.5), 
-                event_label, 
-                rotation=rotation * (2*((i % 2) - 0.5)),
-                ha=ha, 
+                events.timestamps[i],
+                0.5 * ((i % 2) - 0.5),
+                event_label,
+                rotation=rotation * (2 * ((i % 2) - 0.5)),
+                ha=ha,
                 va=va[(i % 2)],
                 rotation_mode="anchor",
             )
-    
+
     return fig
 
 
@@ -633,7 +675,7 @@ class DecodingOutputWidget(widgets.HBox):
         super().__init__()
         self.time_series = time_series
         self.events = events
-        
+
         self.tmin = ts.get_timeseries_mint(time_series)
         self.tmax = ts.get_timeseries_maxt(time_series)
         self.time_window_controller = StartAndDurationController(tmin=self.tmin, tmax=self.tmax)
@@ -643,16 +685,16 @@ class DecodingOutputWidget(widgets.HBox):
             events=widgets.fixed(self.events),
             time_window=self.time_window_controller,
         )
-        
+
         self.angle_controller = widgets.Checkbox(
             value=False,
-            description='Rotate text',
+            description="Rotate text",
             disabled=False,
             indent=False,
             layout=Layout(max_width="150px"),
         )
         self.controls.update(angle=self.angle_controller)
-        
+
         # Sets up interactive output controller
         out_fig = interactive_output(plot_logit_traces, self.controls)
 
@@ -671,7 +713,7 @@ def phoneme_timeintervals(
     rnn_logits: TimeSeries,
     min_consecutive=4,
 ):
-    """Experimental function to generate TimeIntervals aligned to when 
+    """Experimental function to generate TimeIntervals aligned to when
     the phoneme logit RNN predicts certain phonemes"""
     ti = TimeIntervals(name="phoneme_alignment")
     ti.add_column(name="phoneme", description="phoneme")
@@ -681,16 +723,16 @@ def phoneme_timeintervals(
         timestamps = np.arange(len(rnn_logits)) * rnn_logits.rate + rnn_logits.starting_time
     preds = rnn_logits.data[()].argmax(axis=1)
     i = 0
-    while (i + min_consecutive) < len(preds): # iterative approach, too slow?
+    while (i + min_consecutive) < len(preds):  # iterative approach, too slow?
         if preds[i] == 0 or preds[i] == 1:
             n = 1
-        elif np.all(np.isin(preds[i:(i+min_consecutive)], np.array([1, preds[i]]))):
+        elif np.all(np.isin(preds[i : (i + min_consecutive)], np.array([1, preds[i]]))):
             n = min_consecutive + 1
             while ((i + n) < len(preds)) and (preds[i + n] == preds[i]):
                 n += 1
             ti.add_row(
                 start_time=timestamps[i],
-                stop_time=timestamps[min(i+n, len(timestamps)-1)],
+                stop_time=timestamps[min(i + n, len(timestamps) - 1)],
                 start_idx=i,
                 phoneme=PHONEMES[preds[i].astype(int)],
             )
