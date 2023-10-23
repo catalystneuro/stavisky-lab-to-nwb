@@ -23,7 +23,17 @@ from nwbwidgets.timeseries import _prep_timeseries
 
 
 class MultiTableWidget(widgets.VBox):
+    """Widget that displays multiple tables with a dropdown to switch between them"""
+    
     def __init__(self, names, tables):
+        """
+        Parameters
+        ----------
+        names : list of str
+            List of names for each table to display in the dropdown
+        tables : list of pandas.DataFrame
+            List of DataFrames to display, corresponding to `names`
+        """
         assert len(names) == len(tables)
         
         super().__init__()
@@ -58,10 +68,19 @@ class MultiTableWidget(widgets.VBox):
 
 
 class DecodingErrorWidget(widgets.Tab):
+    """Widget that displays word error rate and phoneme error rate across sessions
+    and per-trial within a session"""
+    
     def __init__(
         self,
         trials: Union[TimeIntervals, list[TimeIntervals]],
     ):
+        """
+        Parameters
+        ----------
+        trials : TimeIntervals or list of TimeIntervals
+            Trials tables (e.g. `nwbfile.trials`) for each session to display
+        """
         super().__init__()
         from .wer import mean_wer, mean_per, sentences_to_phonemes
         if isinstance(trials, TimeIntervals):
@@ -129,6 +148,7 @@ def show_aligned_traces(
     figsize=(8, 6),
     gap_scale=10.,
 ):
+    """Plots single-trial and mean TimeSeries data aligned to a given window"""
     if not len(data):
         return ax_single, ax_mean
 
@@ -212,17 +232,35 @@ def show_aligned_traces(
 
         
 class AlignedAveragedTimeSeriesWidget(widgets.VBox):
+    """Extends PSTH alignment, grouping, and averaging functionality to 
+    generic TimeSeries within a processing module"""
+    
     def __init__(
         self,
         time_series: TimeSeries = None,
         trials: TimeIntervals = None,
         processing_module: ProcessingModule = None,
-        trace_index=0,
-        trace_controller=None,
         trace_controller_kwargs=None,
         sem=True,
         gap_scale=10.,
     ):
+        """
+        Parameters
+        ----------
+        time_series : TimeSeries, optional
+            A TimeSeries to plot. If not provided, `processing_module` must be provided.
+        trials : TimeIntervals, optional
+            Trials table to use for alignment. If not provided, the parent file's 
+            nwbfile.trials` will be used
+        processing_module : ProcessingModule, optional
+            The processing module to fetch TimeSeries from. If provided, all TimeSeries
+            in the processing module can be selected for plotting with a dropdown.
+            If not provided, `time_series` must be provided.
+        sem : bool, default: True
+            Whether to show shaded error regions around the mean plot
+        gap_scale : float, default: 10.0
+            Scaling factor for gaps between single-trial traces when not overlaid
+        """
         if time_series is None:
             assert processing_module is not None, \
                 "At least one of `time_series` or `processing_module` should be provided."
@@ -264,19 +302,16 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
             self.processing_module = None
             self.interface_controller = None
 
-        if trace_controller is None:
-            ntraces = self.time_series.data.shape[1]
-            input_trace_controller_kwargs = dict(
-                options=[x for x in range(ntraces)],
-                value=trace_index,
-                description="trace:",
-                layout=Layout(width="200px"),
-            )
-            if trace_controller_kwargs is not None:
-                input_trace_controller_kwargs.update(trace_controller_kwargs)
-            self.trace_controller = widgets.Dropdown(**input_trace_controller_kwargs)
-        else:
-            self.trace_controller = trace_controller
+        ntraces = self.time_series.data.shape[1]
+        input_trace_controller_kwargs = dict(
+            options=[x for x in range(ntraces)],
+            value=0,
+            description="trace:",
+            layout=Layout(width="200px"),
+        )
+        if trace_controller_kwargs is not None:
+            input_trace_controller_kwargs.update(trace_controller_kwargs)
+        self.trace_controller = widgets.Dropdown(**input_trace_controller_kwargs)
 
         self.trial_event_controller = make_trial_event_controller(
             self.trials, layout=Layout(width="200px"), multiple=True
@@ -441,6 +476,8 @@ def zero_pad_edges(
     data: np.ndarray,
     gap_threshold: float = 4.0,
 ):
+    """Helper function to prevent areas with no data from being 
+    interpolated incorrectly, by setting data to 0 at gap edges"""
     median_diff = np.median(np.diff(timestamps))
     cutoff = median_diff * gap_threshold
     gap_idx = np.nonzero(np.diff(timestamps) > cutoff)[0]
@@ -455,7 +492,7 @@ def zero_pad_edges(
             f"{gap_idx.shape[0]}, {right_pad.shape[0]}, {left_pad.shape[0]}, {data.shape[0]}, {timestamps.shape[0]}"
     return timestamps, data
 
-def plot_overlaid_traces(
+def plot_logit_traces(
     time_series: TimeSeries,
     events=None,
     time_window=None,
@@ -468,6 +505,7 @@ def plot_overlaid_traces(
     transform=functools.partial(scipy.special.softmax, axis=1),
     text_diff=True,
 ):
+    """Plot function for decoding logits and text output"""
     if events is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
@@ -582,18 +620,14 @@ class DecodingOutputWidget(widgets.HBox):
         self,
         time_series: TimeSeries,
         events: LabeledEvents = None,
-        mpl_plotter=plot_overlaid_traces,
     ):
         """
-
         Parameters
         ----------
         time_series: TimeSeries
-        dynamic_table_region_name: str, optional
-        foreign_time_window_controller: StartAndDurationController, optional
-        foreign_group_and_sort_controller: GroupAndSortController, optional
-        mpl_plotter: function
-            Choose function to use when creating figures
+            TimeSeries containing phoneme logits. Must have 41 columns
+        events : LabeledEvents, optional
+            LabeledEvents containing decoded text output
         """
 
         super().__init__()
@@ -620,7 +654,7 @@ class DecodingOutputWidget(widgets.HBox):
         self.controls.update(angle=self.angle_controller)
         
         # Sets up interactive output controller
-        out_fig = interactive_output(mpl_plotter, self.controls)
+        out_fig = interactive_output(plot_logit_traces, self.controls)
 
         right_panel = widgets.VBox(
             children=[
@@ -637,6 +671,8 @@ def phoneme_timeintervals(
     rnn_logits: TimeSeries,
     min_consecutive=4,
 ):
+    """Experimental function to generate TimeIntervals aligned to when 
+    the phoneme logit RNN predicts certain phonemes"""
     ti = TimeIntervals(name="phoneme_alignment")
     ti.add_column(name="phoneme", description="phoneme")
     ti.add_column(name="start_idx", description="start_idx")
