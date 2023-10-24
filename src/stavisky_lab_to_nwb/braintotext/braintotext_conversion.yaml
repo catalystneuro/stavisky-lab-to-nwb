@@ -5,7 +5,7 @@ Recording:
     stream_name: "continuousNeural" # string
     data_field: "samples" # string
     data_dtype: "int16" # string
-    channel_ids: null # list, optional
+    # channel_ids: null # list, optional
     frames_per_entry: 30 # int, optional
     sampling_frequency: 30000.0 # float, optional
     nsp_timestamp_field: "timestamps" # string, optional
@@ -20,6 +20,8 @@ Recording:
     gain_to_uv: 0.01 # float, optional
     channel_dim: 1 # int, optional
     chunk_size: 50000 # int, optional
+    channel_mapping_file: "./braintotext/braintotext_channel_map.json" # string, relative to `src/stavisky_lab_to_nwb`
+      
   conversion_options:
     iterator_opts: # dict, optional
       buffer_gb: 0.2 # float
@@ -30,9 +32,9 @@ Sorting:
     stream_name: "binnedFeatures_10ms" # string
     data_field: "threshold_crossings" # string
     data_dtype: "int16" # string
-    unit_ids: null # list, optional
+    # unit_ids: null # list, optional
     frames_per_entry: 1 # int, optional
-    sampling_frequency: null # float, optional
+    # sampling_frequency: null # float, optional
     nsp_timestamp_field: "input_nsp_timestamp" # string, optional
     nsp_timestamp_kwargs: # dict, optional
       timestamp_dtype: "int64" # string
@@ -42,7 +44,7 @@ Sorting:
     smoothing_kwargs: {} # dict, optional
     unit_dim: 0 # int, optional
     clock: "nsp" # string, optional
-    chunk_size: null # int, optional
+    # chunk_size: null # int, optional
   conversion_options:
     units_description: "Unsorted threshold crossings binned at 10 ms resolution for each recording channel." # string
     write_as: "processing" # string, optional
@@ -68,7 +70,7 @@ Audio:
       enforce_causal: True # bool
       sampling_frequency: 30000.0 # float
     load_timestamps: True # bool, optional
-    chunk_size: null # int, optional
+    # chunk_size: null # int, optional
   conversion_options: {}
 
 SpikingBandPower10ms:
@@ -90,7 +92,7 @@ SpikingBandPower10ms:
       timestamp_index: 0 # int or None
     smoothing_kwargs: {} # dict, optional
     load_timestamps: True # bool, optional
-    chunk_size: null # int, optional
+    # chunk_size: null # int, optional
   conversion_options: {}
 
 SpikingBandPower20ms:
@@ -112,7 +114,7 @@ SpikingBandPower20ms:
       timestamp_index: 0 # int or None
     smoothing_kwargs: {} # dict, optional
     load_timestamps: True # bool, optional
-    chunk_size: null # int, optional
+    # chunk_size: null # int, optional
   conversion_options: {}
 
 FilteredRecording: 
@@ -158,7 +160,7 @@ SmoothedSpikingBandPower:
       timestamp_index: 0 # int or None
     smoothing_kwargs: {} # dict, optional
     load_timestamps: True # bool, optional
-    chunk_size: null # int, optional
+    # chunk_size: null # int, optional
   conversion_options: {}
 
 SmoothedThreshCrossing:
@@ -180,7 +182,7 @@ SmoothedThreshCrossing:
       timestamp_index: 0 # int or None
     smoothing_kwargs: {} # dict, optional
     load_timestamps: True # bool, optional
-    chunk_size: null # int, optional
+    # chunk_size: null # int, optional
   conversion_options: {}
 
 PhonemeLogits:

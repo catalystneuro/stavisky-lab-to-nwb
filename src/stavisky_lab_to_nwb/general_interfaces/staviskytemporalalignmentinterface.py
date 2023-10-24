@@ -9,8 +9,8 @@ from abc import abstractmethod
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 
-from stavisky_lab_to_nwb.utils.redis_io import read_stream_fields, RedisDataChunkIterator
-from stavisky_lab_to_nwb.utils.timestamps import get_stream_ids_and_timestamps, smooth_timestamps
+from ..utils.redis_io import read_stream_fields, RedisDataChunkIterator
+from ..utils.timestamps import get_stream_ids_and_timestamps, smooth_timestamps
 
 
 class DualTimestampTemporalAlignmentInterface(BaseTemporalAlignmentInterface):
@@ -73,7 +73,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = None,
         nsp_timestamp_kwargs: dict = dict(),
-        smoothing_kwargs: dict = {},
+        smoothing_kwargs: dict = dict(),
         load_timestamps: bool = True,
         chunk_size: Optional[int] = None,
     ):
@@ -130,6 +130,8 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         self.ts_key = ts_key
         if "shape" not in data_kwargs:
             data_kwargs["shape"] = (frames_per_entry, -1)  # doesn't handle transposed data!
+        if "encoding" not in data_kwargs:
+            data_kwargs["encoding"] = "buffer" # default is force buffer encoding
         if data_dtype is not None:
             data_kwargs["dtype"] = data_dtype
         self.data_kwargs = data_kwargs

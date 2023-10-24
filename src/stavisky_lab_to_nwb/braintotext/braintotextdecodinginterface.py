@@ -9,7 +9,7 @@ from hdmf.backends.hdf5 import H5DataIO
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools.nwb_helpers import get_module
 
-from stavisky_lab_to_nwb.utils.redis import read_entry
+from ..utils.redis_io import read_entry
 
 
 class BrainToTextPhonemeLogitsInterface(BaseDataInterface):

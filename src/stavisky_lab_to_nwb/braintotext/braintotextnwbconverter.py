@@ -2,9 +2,10 @@
 import inspect
 from pathlib import Path
 from pynwb import NWBFile
-from typing import Optional
+from typing import Optional, Union
 
-from neuroconv.utils import load_dict_from_file, dict_deep_updatefrom neuroconv import NWBConverter
+from neuroconv import NWBConverter
+from neuroconv.utils import load_dict_from_file, dict_deep_update
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 
 from stavisky_lab_to_nwb.general_interfaces import (
@@ -65,6 +66,13 @@ class BrainToTextNWBConverter(NWBConverter):
             for interface_name in default_config.keys() 
             if interface_name not in exclude_interfaces
         }
+        for name, data_interface in self.data_interface_classes.items():
+            if name not in default_source_data:
+                continue
+            if "port" in inspect.signature(data_interface).parameters.keys():
+                if "port" not in default_source_data[name]:
+                    default_source_data[name]["port"] = port
+                    default_source_data[name]["host"] = host
         source_data = dict_deep_update(default_source_data, source_data)
         self._validate_source_data(source_data=source_data, verbose=self.verbose)
         self.session_start_time = session_start_time
@@ -74,10 +82,6 @@ class BrainToTextNWBConverter(NWBConverter):
             if name not in source_data:
                 continue
             interface_source_data = source_data[name]
-            if "port" in inspect.signature(data_interface).parameters.keys():
-                if "port" not in interface_source_data:
-                    interface_source_data["port"] = port
-                    interface_source_data["host"] = host
             if reuse_timestamps and issubclass(data_interface, StaviskyTemporalAlignmentInterface):
                 stream_name = interface_source_data.get("stream_name", None)
                 if (stream_name is not None) and (stream_name in timestamp_source_interfaces):
@@ -107,9 +111,10 @@ class BrainToTextNWBConverter(NWBConverter):
         conversion_options: Optional[dict] = None,
     ) -> None:
         conversion_options = dict_deep_update(self.default_conversion_options, conversion_options)
-        for key, val in conversion_options.items():
-            if "stub_test" not in val:
-                val["stub_test"] = stub_test
+        for name, data_interface in self.data_interface_objects.items():
+            if "stub_test" in inspect.signature(data_interface.add_to_nwbfile).parameters.keys():
+                if "stub_test" not in conversion_options[name]:
+                    conversion_options[name]["stub_test"] = stub_test
         super().run_conversion(
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,

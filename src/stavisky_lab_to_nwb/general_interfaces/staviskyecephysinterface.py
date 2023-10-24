@@ -11,7 +11,7 @@ from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterf
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
 
-from stavisky_lab_to_nwb.general_interfaces.staviskytemporalalignmentinterface import StaviskyTemporalAlignmentInterface
+from .staviskytemporalalignmentinterface import StaviskyTemporalAlignmentInterface
 
 
 class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
@@ -29,6 +29,7 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = "input_nsp_timestamp",
         nsp_timestamp_kwargs: dict = dict(),
+        smoothing_kwargs: dict = dict(),
         load_timestamps: bool = True,
         chunk_size: Optional[int] = None,
     ):
@@ -43,6 +44,7 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
             data_kwargs=data_kwargs,
             nsp_timestamp_field=nsp_timestamp_field,
             nsp_timestamp_kwargs=nsp_timestamp_kwargs,
+            smoothing_kwargs=smoothing_kwargs,
             load_timestamps=load_timestamps,
             chunk_size=chunk_size,
         )
@@ -93,7 +95,7 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
         try:  # shouldn't fail but just in case
             params = data["nodes"]["featureExtraction_and_binning"]["parameters"]
         except Exception as e:
-            print(f"Unable to extract filtering info: {e}")
+            print(f"StaviskySpikingBandPowerInterface: Unable to extract filtering info: {e}")
             params = {}
         butter_lowercut = params.get("butter_lowercut", None)
         butter_uppercut = params.get("butter_uppercut", None)
@@ -152,6 +154,7 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = "timestamps",
         nsp_timestamp_kwargs: dict = dict(),
+        smoothing_kwargs: dict = dict(),
         load_timestamps: bool = True,
         chunk_size: Optional[int] = None,
     ):
@@ -166,6 +169,7 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
             data_kwargs=data_kwargs,
             nsp_timestamp_field=nsp_timestamp_field,
             nsp_timestamp_kwargs=nsp_timestamp_kwargs,
+            smoothing_kwargs=smoothing_kwargs,
             load_timestamps=load_timestamps,
             chunk_size=chunk_size,
         )
@@ -200,7 +204,7 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
         try:  # shouldn't fail but just in case
             params = data["nodes"]["featureExtraction_and_binning"]["parameters"]
         except Exception as e:
-            print(f"Unable to extract filtering info: {e}")
+            print(f"StaviskyFilteredRecordingInterface: Unable to extract filtering info: {e}")
             params = {}
         butter_lowercut = params.get("butter_lowercut", None)
         butter_uppercut = params.get("butter_uppercut", None)
@@ -263,6 +267,7 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = "input_nsp_timestamp",
         nsp_timestamp_kwargs: dict = dict(),
+        smoothing_kwargs: dict = dict(),
         load_timestamps: bool = True,
         chunk_size: Optional[int] = None,
     ):
@@ -277,6 +282,7 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
             data_kwargs=data_kwargs,
             nsp_timestamp_field=nsp_timestamp_field,
             nsp_timestamp_kwargs=nsp_timestamp_kwargs,
+            smoothing_kwargs=smoothing_kwargs,
             load_timestamps=load_timestamps,
             chunk_size=chunk_size,
         )
@@ -313,7 +319,7 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
         try:  # shouldn't fail but just in case
             params = data["nodes"]["featureExtraction_and_binning"]["parameters"]
         except Exception as e:
-            print(f"Unable to extract filtering info: {e}")
+            print(f"StaviskySmoothedSpikingBandPowerInterface: Unable to extract filtering info: {e}")
             params = {}
         butter_lowercut = params.get("butter_lowercut", None)
         butter_uppercut = params.get("butter_uppercut", None)
@@ -323,7 +329,7 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
         try:
             params = data["nodes"]["b2s_preprocess10s"]["parameters"]
         except Exception as e:
-            print(f"Unable to extract smoothing info: {e}")
+            print(f"StaviskySmoothedSpikingBandPowerInterface: Unable to extract smoothing info: {e}")
             params = {}
         norm_win_len = params.get("norm_win_len", None)
         smooth_bin_size = params.get("bin_size_ms", None)
@@ -390,6 +396,7 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = "input_nsp_timestamp",
         nsp_timestamp_kwargs: dict = dict(),
+        smoothing_kwargs: dict = dict(),
         load_timestamps: bool = True,
         chunk_size: Optional[int] = None,
     ):
@@ -404,6 +411,7 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
             data_kwargs=data_kwargs,
             nsp_timestamp_field=nsp_timestamp_field,
             nsp_timestamp_kwargs=nsp_timestamp_kwargs,
+            smoothing_kwargs=smoothing_kwargs,
             load_timestamps=load_timestamps,
             chunk_size=chunk_size,
         )
@@ -437,7 +445,7 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
         try:
             params = data["nodes"]["b2s_preprocess10s"]["parameters"]
         except Exception as e:
-            print(f"Unable to extract smoothing info: {e}")
+            print(f"StaviskySmoothedThreshCrossingInterface: Unable to extract smoothing info: {e}")
             params = {}
         norm_win_len = params.get("norm_win_len", None)
         smooth_bin_size = params.get("bin_size_ms", None)

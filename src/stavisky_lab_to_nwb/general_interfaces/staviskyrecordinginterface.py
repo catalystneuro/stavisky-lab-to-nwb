@@ -2,10 +2,12 @@
 import redis
 import json
 import numpy as np
+from pathlib import Path
 from pynwb.file import NWBFile
 from typing import Union, Optional, List, Tuple, Literal
 
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
+from neuroconv.utils.types import FilePathType
 
 from .spikeinterface import RedisStreamRecordingExtractor
 from ..utils.timestamps import get_stream_ids_and_timestamps, smooth_timestamps
@@ -33,10 +35,16 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
         smoothing_kwargs: dict = dict(window_len="max", enforce_causal=True),
         gain_to_uv: Optional[float] = 1e-2,
         channel_dim: int = 1,
-        chunk_size: int = 10000,
+        chunk_size: Optional[int] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
+        channel_mapping_file: Optional[FilePathType] = None,
     ):
+        if channel_mapping_file is not None:
+            with open(Path(__file__).parent.parent / channel_mapping_file) as f:
+                channel_mapping = (np.asarray(json.load(f)["electrode_mapping"], dtype=int) - 1).tolist()
+        else:
+            channel_mapping = None
         super().__init__(
             verbose=verbose,
             es_key=es_key,
@@ -54,6 +62,7 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
             gain_to_uv=gain_to_uv,
             channel_dim=channel_dim,
             chunk_size=chunk_size,
+            channel_mapping=channel_mapping,
         )
 
         # connect to Redis

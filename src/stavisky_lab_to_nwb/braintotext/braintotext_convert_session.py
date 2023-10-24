@@ -39,7 +39,7 @@ def session_to_nwb(
     nwbfile_path = output_dir_path / f"{session_id}.nwb"
 
     converter = BrainToTextNWBConverter(
-        conversion_config_pathconversion_config_path,
+        conversion_config_path=conversion_config_path,
         port=port,
         host=host,
         source_data=source_data, 

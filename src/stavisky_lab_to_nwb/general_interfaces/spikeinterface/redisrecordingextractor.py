@@ -28,6 +28,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
         gain_to_uv: Optional[float] = None,
         channel_dim: int = 0,
         chunk_size: Optional[int] = None,
+        channel_mapping: Optional[list] = None,
     ):
         """Initialize the RedisStreamRecordingExtractor
 
@@ -134,11 +135,13 @@ class RedisStreamRecordingExtractor(BaseRecording):
             data_field=data_field,
             data_dtype=data_dtype,
             data_kwargs=data_kwargs,
+            channel_count=channel_count,
             timestamps=timestamps,
             entry_ids=entry_ids,
             nsp_timestamps=nsp_timestamps,
             frames_per_entry=frames_per_entry,
             t_start=None,
+            channel_mapping=channel_mapping,
         )
         self.add_recording_segment(recording_segment)
 
@@ -193,11 +196,13 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         data_field: Union[bytes, str],
         data_dtype: Union[str, type, np.dtype],
         data_kwargs: dict,
+        channel_count: int,
         timestamps: np.ndarray,
         entry_ids: list[bytes],
         nsp_timestamps: Optional[np.ndarray] = None,
         frames_per_entry: int = 1,
         t_start: Optional[float] = None,
+        channel_mapping: Optional[list] = None,
     ):
         """Initialize the RedisStreamRecordingSegment
 
@@ -242,8 +247,11 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
 
         # arg checks
         assert len(entry_ids) == self._client.xlen(stream_name)
+        if channel_mapping is not None:
+            assert len(channel_mapping) == channel_count
 
         # save some variables
+        self._channel_mapping = channel_mapping
         self._nsp_timestamps = nsp_timestamps
         self._stream_name = stream_name
         self._data_field = data_field
@@ -314,6 +322,8 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
             ],
             axis=0,
         )
+        if self._channel_mapping is not None:
+            traces = traces[:, self._channel_mapping]
 
         # slicing operations
         if channel_indices is not None:

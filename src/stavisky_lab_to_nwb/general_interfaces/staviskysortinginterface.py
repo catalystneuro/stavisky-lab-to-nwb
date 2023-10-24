@@ -32,7 +32,7 @@ class StaviskySortingInterface(BaseSortingExtractorInterface, DualTimestampTempo
         smoothing_kwargs: dict = dict(),
         unit_dim: int = 0,
         clock: Literal["redis", "nsp"] = "nsp",
-        chunk_size: int = 10000,
+        chunk_size: Optional[int] = None,
         verbose: bool = True,
     ):
         super().__init__(
