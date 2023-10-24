@@ -11,7 +11,16 @@ from neuroconv.utils import load_dict_from_file, dict_deep_update
 from stavisky_lab_to_nwb.braintotext import BrainToTextNWBConverter
 
 
-def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub_test: bool = False):
+def session_to_nwb(
+    port: int, 
+    host: str, 
+    conversion_config_path: Union[str, Path],
+    output_dir_path: Union[str, Path], 
+    source_data: dict = dict(),
+    conversion_options: dict = dict(),
+    stub_test: bool = False,
+    exclude_interfaces: list[str] = [],
+):
     # Instantiate Redis client and check connection
     r = redis.Redis(port=port, host=host)
     r.ping()
@@ -29,247 +38,14 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     session_id = rdb_metadata[b"session_name"].decode("UTF-8")
     nwbfile_path = output_dir_path / f"{session_id}.nwb"
 
-    # Configure conversion
-    source_data = dict()
-    conversion_options = dict()
-
-    # Add Recording
-    source_data.update(
-        dict(
-            Recording=dict(
-                port=port,
-                host=host,
-                stream_name="continuousNeural",
-                data_field="samples",
-                data_dtype="int16",
-                frames_per_entry=30,
-                sampling_frequency=3.0e4,
-                timestamp_field="timestamps",
-                timestamp_kwargs=dict(
-                    timestamp_dtype="int64",
-                    timestamp_encoding="buffer",
-                    timestamp_conversion=1.0 / 3e4,
-                ),
-                smoothing_kwargs=dict(
-                    window_len="max",
-                    enforce_causal=True,
-                ),
-                gain_to_uv=0.01,
-                channel_dim=1,
-            )
-        )
+    converter = BrainToTextNWBConverter(
+        conversion_config_pathconversion_config_path,
+        port=port,
+        host=host,
+        source_data=source_data, 
+        session_start_time=session_start_time,
+        exclude_interfaces=exclude_interfaces,
     )
-    conversion_options.update(
-        dict(
-            Recording=dict(
-                iterator_opts=dict(
-                    buffer_gb=0.2,  # may need to reduce depending on machine
-                ),
-                stub_test=stub_test,
-            )
-        )
-    )
-
-    # Add Sorting
-    source_data.update(
-        dict(
-            Sorting=dict(
-                port=port,
-                host=host,
-                stream_name="binnedFeatures_10ms",
-                data_field="threshold_crossings",
-                data_dtype="int16",
-                frames_per_entry=1,
-                timestamp_field="input_nsp_timestamp",
-                timestamp_kwargs=dict(
-                    timestamp_conversion=1.0 / 3.0e4,
-                    timestamp_encoding="buffer",
-                    timestamp_dtype="int64",
-                    timestamp_index=0,
-                ),
-                chunk_size=50000,
-                clock="nsp",
-            )
-        )
-    )
-    conversion_options.update(
-        dict(
-            Sorting=dict(
-                units_description=(
-                    "Unsorted threshold crossings binned at 10 ms resolution for each recording channel."
-                ),
-                write_as="processing",
-                stub_test=stub_test,
-            )
-        )
-    )
-
-    # Add FilteredEphys interface
-    source_data.update(
-        dict(
-            FilteredRecording=dict(
-                port=port,
-                host=host,
-                stream_name="continuousNeural_filtered",
-                data_field="samples",
-                ts_key="filtered_ephys",
-                nsp_timestamp_field="timestamps",
-                nsp_timestamp_conversion=(1.0 / 3.0e4),
-                nsp_timestamp_encoding="buffer",
-                nsp_timestamp_dtype="int64",
-                chunk_size=10000,
-            )
-        )
-    )
-    conversion_options.update(
-        dict(
-            FilteredRecording=dict(
-                stub_test=stub_test,
-                use_chunk_iterator=True,
-                iterator_opts=dict(buffer_gb=0.2),
-            )
-        )
-    )
-
-    # Add SpikingBandPower 10 ms resolution
-    source_data.update(
-        dict(
-            SpikingBandPower10ms=dict(
-                port=port,
-                host=host,
-                stream_name="binnedFeatures_10ms",
-                data_field="spike_band_power",
-                ts_key="spiking_band_power_10ms",
-                nsp_timestamp_field="input_nsp_timestamp",
-                nsp_timestamp_conversion=(1.0 / 3.0e4),
-                nsp_timestamp_encoding="buffer",
-                nsp_timestamp_dtype="int64",
-                nsp_timestamp_index=0,
-                chunk_size=10000,
-            )
-        )
-    )
-    conversion_options.update(
-        dict(
-            SpikingBandPower10ms=dict(
-                stub_test=stub_test,
-            )
-        )
-    )
-
-    # Add SpikingBandPower 20 ms resolution
-    source_data.update(
-        dict(
-            SpikingBandPower20ms=dict(
-                port=port,
-                host=host,
-                stream_name="binnedFeatures_20ms",
-                data_field="spike_band_power",
-                ts_key="spiking_band_power_20ms",
-                nsp_timestamp_field="input_nsp_timestamp",
-                nsp_timestamp_conversion=(1.0 / 3.0e4),
-                nsp_timestamp_encoding="buffer",
-                nsp_timestamp_dtype="int64",
-                nsp_timestamp_index=0,
-                chunk_size=10000,
-            )
-        )
-    )
-    conversion_options.update(
-        dict(
-            SpikingBandPower20ms=dict(
-                stub_test=stub_test,
-            )
-        )
-    )
-
-    # Add smoothed sbp and thresh crossing
-    source_data.update(
-        dict(
-            SmoothedSBP10ms=dict(
-                port=port,
-                host=host,
-                stream_name="smoothFeatures_10ms",
-                data_field="spike_band_power",
-                ts_key="smoothed_sbp_10ms",
-                nsp_timestamp_field="input_tracking_ID",
-                nsp_timestamp_conversion=1.0e-3,
-                nsp_timestamp_encoding="buffer",
-                nsp_timestamp_dtype="int64",
-                nsp_timestamp_index=0,
-                chunk_size=10000,
-            )
-        )
-    )
-    conversion_options.update(
-        dict(
-            SmoothedSBP10ms=dict(
-                stub_test=stub_test,
-            )
-        )
-    )
-    source_data.update(
-        dict(
-            SmoothedTC10ms=dict(
-                port=port,
-                host=host,
-                stream_name="smoothFeatures_10ms",
-                data_field="threshold_crossings",
-                ts_key="smoothed_tc_10ms",
-                nsp_timestamp_field="input_tracking_ID",
-                nsp_timestamp_conversion=1.0e-3,
-                nsp_timestamp_encoding="buffer",
-                nsp_timestamp_dtype="int64",
-                nsp_timestamp_index=0,
-                chunk_size=10000,
-            )
-        )
-    )
-    conversion_options.update(
-        dict(
-            SmoothedTC10ms=dict(
-                stub_test=stub_test,
-            )
-        )
-    )
-
-    # Add audio
-    source_data.update(
-        dict(
-            Audio=dict(
-                port=port,
-                host=host,
-                stream_name="continuousAnalog",
-                data_field="samples",
-                ts_key="audio",
-                nsp_timestamp_field="timestamps",
-                nsp_timestamp_conversion=1.0e-9,
-                nsp_timestamp_encoding="buffer",
-                nsp_timestamp_dtype="int64",
-                smoothing_kwargs=dict(window_len="max", sampling_frequency=3.0e4),
-                chunk_size=10000,
-            )
-        )
-    )
-    conversion_options.update(
-        dict(
-            Audio=dict(
-                stub_test=stub_test,
-            )
-        )
-    )
-
-    # Add Trials
-    source_data.update(dict(Trials=dict(port=port, host=host)))
-    conversion_options.update(dict(Trials=dict()))
-
-    # Add Decoding
-    source_data.update(dict(PhonemeLogits=dict(port=port, host=host)))
-    conversion_options.update(dict(PhonemeLogits=dict()))
-    source_data.update(dict(DecodedText=dict(port=port, host=host)))
-    conversion_options.update(dict(DecodedText=dict()))
-
-    converter = BrainToTextNWBConverter(source_data=source_data, session_start_time=session_start_time)
 
     # Add datetime to conversion
     metadata = converter.get_metadata()
@@ -298,19 +74,26 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
     metadata = dict_deep_update(metadata, editable_metadata)
 
     # Run conversion
-    converter.run_conversion(metadata=metadata, nwbfile_path=nwbfile_path, conversion_options=conversion_options)
+    converter.run_conversion(
+        metadata=metadata, 
+        nwbfile_path=nwbfile_path, 
+        conversion_options=conversion_options,
+        stub_test=stub_test,
+    )
 
 
 if __name__ == "__main__":
     # Parameters for conversion
     port = 6379
     host = "localhost"
+    conversion_config_path = Path("./braintotext_conversion.yaml")
     output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/braintotext/").expanduser()
     stub_test = False
 
     session_to_nwb(
         port=port,
         host=host,
+        conversion_config_path=conversion_config_path,
         output_dir_path=output_dir_path,
         stub_test=stub_test,
     )

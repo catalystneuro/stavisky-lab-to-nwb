@@ -1,0 +1,199 @@
+Recording:
+  # interface: StaviskyRecordingInterface (`general_interfaces/staviskyrecordinginterface.py`)
+  source_data: 
+    es_key: "ElectricalSeries" # string
+    stream_name: "continuousNeural" # string
+    data_field: "samples" # string
+    data_dtype: "int16" # string
+    channel_ids: null # list, optional
+    frames_per_entry: 30 # int, optional
+    sampling_frequency: 30000.0 # float, optional
+    nsp_timestamp_field: "timestamps" # string, optional
+    nsp_timestamp_kwargs: # dict, optional
+      timestamp_dtype: "int64" # string
+      timestamp_encoding: "buffer" # string
+      timestamp_conversion: 3.3333333333333335e-05 # float
+      timestamp_index: null # int or None
+    smoothing_kwargs: # dict, optional
+      window_len: "max" # int or "max"
+      enforce_causal: True # bool
+    gain_to_uv: 0.01 # float, optional
+    channel_dim: 1 # int, optional
+    chunk_size: 50000 # int, optional
+  conversion_options:
+    iterator_opts: # dict, optional
+      buffer_gb: 0.2 # float
+
+Sorting:
+  # interface: StaviskySortingInterface (`general_interfaces/staviskysortinginterface.py`)
+  source_data: 
+    stream_name: "binnedFeatures_10ms" # string
+    data_field: "threshold_crossings" # string
+    data_dtype: "int16" # string
+    unit_ids: null # list, optional
+    frames_per_entry: 1 # int, optional
+    sampling_frequency: null # float, optional
+    nsp_timestamp_field: "input_nsp_timestamp" # string, optional
+    nsp_timestamp_kwargs: # dict, optional
+      timestamp_dtype: "int64" # string
+      timestamp_encoding: "buffer" # string
+      timestamp_conversion: 3.3333333333333335e-05 # float
+      timestamp_index: 0 # int or None
+    smoothing_kwargs: {} # dict, optional
+    unit_dim: 0 # int, optional
+    clock: "nsp" # string, optional
+    chunk_size: null # int, optional
+  conversion_options:
+    units_description: "Unsorted threshold crossings binned at 10 ms resolution for each recording channel." # string
+    write_as: "processing" # string, optional
+  
+Audio:
+  # interface: StaviskyAudioInterface (`general_interfaces/staviskyaudiointerface.py`)
+  source_data:
+    ts_key: "AudioSeries" # string
+    stream_name: "continuousAnalog" # string
+    data_field: "samples" # string
+    data_dtype: "int16" # string
+    frames_per_entry: 30 # int, optional
+    data_kwargs: # dict, optional
+      encoding: "buffer" # string
+      shape: [30, 2] # list/tuple
+    nsp_timestamp_field: "timestamps" # string, optional
+    nsp_timestamp_kwargs: # dict, optional
+      timestamp_conversion: 1.0e-9 # float
+      timestamp_encoding: "buffer" # string
+      timestamp_dtype: "int64" # string
+    smoothing_kwargs:  # dict, optional
+      window_len: "max" # int or string
+      enforce_causal: True # bool
+      sampling_frequency: 30000.0 # float
+    load_timestamps: True # bool, optional
+    chunk_size: null # int, optional
+  conversion_options: {}
+
+SpikingBandPower10ms:
+  # interface: StaviskySpikingBandPowerInterface (`general_interfaces/staviskyecephysinterface.py`)
+  source_data:
+    ts_key: "SpikingBandPower10ms" # string
+    stream_name: "binnedFeatures_10ms" # string
+    data_field: "spike_band_power" # string
+    data_dtype: "float32" # string
+    frames_per_entry: 1 # int, optional
+    data_kwargs: # dict, optional
+      encoding: "buffer" # string
+      shape: [1, 256] # list/tuple
+    nsp_timestamp_field: "input_nsp_timestamp" # string, optional
+    nsp_timestamp_kwargs: # dict, optional
+      timestamp_conversion: 3.3333333333333335e-05 # float
+      timestamp_encoding: "buffer" # string
+      timestamp_dtype: "int64" # string
+      timestamp_index: 0 # int or None
+    smoothing_kwargs: {} # dict, optional
+    load_timestamps: True # bool, optional
+    chunk_size: null # int, optional
+  conversion_options: {}
+
+SpikingBandPower20ms:
+  # interface: StaviskySpikingBandPowerInterface (`general_interfaces/staviskyecephysinterface.py`)
+  source_data:
+    ts_key: "SpikingBandPower20ms" # string
+    stream_name: "binnedFeatures_20ms" # string
+    data_field: "spike_band_power" # string
+    data_dtype: "float32" # string
+    frames_per_entry: 1 # int, optional
+    data_kwargs: # dict, optional
+      encoding: "buffer" # string
+      shape: [1, 256] # list/tuple
+    nsp_timestamp_field: "input_nsp_timestamp" # string, optional
+    nsp_timestamp_kwargs: # dict, optional
+      timestamp_conversion: 3.3333333333333335e-05 # float
+      timestamp_encoding: "buffer" # string
+      timestamp_dtype: "int64" # string
+      timestamp_index: 0 # int or None
+    smoothing_kwargs: {} # dict, optional
+    load_timestamps: True # bool, optional
+    chunk_size: null # int, optional
+  conversion_options: {}
+
+FilteredRecording: 
+  # interface: StaviskyFilteredRecordingInterface (`general_interfaces/staviskyecephysinterface.py`)
+  source_data:
+    ts_key: "FilteredRecording" # string
+    stream_name: "continuousNeural_filtered" # string
+    data_field: "samples" # string
+    data_dtype: "int16" # string
+    frames_per_entry: 300 # int, optional
+    data_kwargs: # dict, optional
+      encoding: "buffer" # string
+      shape: [300, 256] # list/tuple
+    nsp_timestamp_field: "timestamps" # string, optional
+    nsp_timestamp_kwargs: # dict, optional
+      timestamp_conversion: 3.3333333333333335e-05 # float
+      timestamp_encoding: "buffer" # string
+      timestamp_dtype: "int64" # string
+    smoothing_kwargs: {} # dict, optional
+    load_timestamps: True # bool, optional
+    chunk_size: 50000 # int, optional
+  conversion_options:
+    use_chunk_iterator: True # bool, optional
+    iterator_opts: # dict, optional
+      buffer_gb: 0.2 # float
+
+SmoothedSpikingBandPower:
+  # interface: StaviskySmoothedSpikingBandPowerInterface (`general_interfaces/staviskyecephysinterface.py`)
+  source_data:
+    ts_key: "SmoothedSpikingBandPower10ms" # string
+    stream_name: "smoothFeatures_10ms" # string
+    data_field: "spike_band_power" # string
+    data_dtype: "float32" # string
+    frames_per_entry: 1 # int, optional
+    data_kwargs: # dict, optional
+      encoding: "buffer" # string
+      shape: [1, 256] # list/tuple
+    nsp_timestamp_field: "input_tracking_ID" # string, optional
+    nsp_timestamp_kwargs: # dict, optional
+      timestamp_conversion: 1.0e-3 # float
+      timestamp_encoding: "buffer" # string
+      timestamp_dtype: "int64" # string
+      timestamp_index: 0 # int or None
+    smoothing_kwargs: {} # dict, optional
+    load_timestamps: True # bool, optional
+    chunk_size: null # int, optional
+  conversion_options: {}
+
+SmoothedThreshCrossing:
+  # interface: StaviskySmoothedThreshCrossingInterface (`general_interfaces/staviskyecephysinterface.py`)
+  source_data:
+    ts_key: "SmoothedThreshCrossing10ms" # string
+    stream_name: "smoothFeatures_10ms" # string
+    data_field: "threshold_crossings" # string
+    data_dtype: "float32" # string
+    frames_per_entry: 1 # int, optional
+    data_kwargs: # dict, optional
+      encoding: "buffer" # string
+      shape: [1, 256] # list/tuple
+    nsp_timestamp_field: "input_tracking_ID" # string, optional
+    nsp_timestamp_kwargs: # dict, optional
+      timestamp_conversion: 1.0e-3 # float
+      timestamp_encoding: "buffer" # string
+      timestamp_dtype: "int64" # string
+      timestamp_index: 0 # int or None
+    smoothing_kwargs: {} # dict, optional
+    load_timestamps: True # bool, optional
+    chunk_size: null # int, optional
+  conversion_options: {}
+
+PhonemeLogits:
+  # interface: BrainToTextPhonemeLogitsInterface (`braintotext/braintotextdecodinginterface.py`)
+  source_data: {}
+  conversion_options: {}
+
+DecodedText: 
+  # interface: BrainToTextDecodedTextInterface (`braintotext/braintotextdecodinginterface.py`)
+  source_data: {}
+  conversion_options: {}
+
+Trials: 
+  # interface: BrainToTextTrialsInterface (`braintotext/braintotexttrialsinterface.py`)
+  source_data: {}
+  conversion_options: {}

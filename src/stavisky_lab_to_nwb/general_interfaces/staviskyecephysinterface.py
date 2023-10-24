@@ -17,23 +17,18 @@ from stavisky_lab_to_nwb.general_interfaces.staviskytemporalalignmentinterface i
 class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
     """Spiking band power interface for Stavisky Redis conversion"""
 
-    default_data_kwargs: dict = dict(dtype="float32", encoding="buffer", shape=(1, 256))
-
     def __init__(
         self,
         port: int,
         host: str,
         stream_name: str,
         data_field: str,
-        ts_key: str = "spiking_band_power",
+        ts_key: str = "SpikingBandPower",
         frames_per_entry: int = 1,
         data_dtype: Optional[str] = None,
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = "input_nsp_timestamp",
-        nsp_timestamp_conversion: Optional[float] = 1.0 / 3.0e4,
-        nsp_timestamp_encoding: Optional[str] = "buffer",
-        nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = "int64",
-        nsp_timestamp_index: Optional[int] = 0,
+        nsp_timestamp_kwargs: dict = dict(),
         load_timestamps: bool = True,
         chunk_size: Optional[int] = None,
     ):
@@ -47,10 +42,7 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
             data_dtype=data_dtype,
             data_kwargs=data_kwargs,
             nsp_timestamp_field=nsp_timestamp_field,
-            nsp_timestamp_conversion=nsp_timestamp_conversion,
-            nsp_timestamp_encoding=nsp_timestamp_encoding,
-            nsp_timestamp_dtype=nsp_timestamp_dtype,
-            nsp_timestamp_index=nsp_timestamp_index,
+            nsp_timestamp_kwargs=nsp_timestamp_kwargs,
             load_timestamps=load_timestamps,
             chunk_size=chunk_size,
         )
@@ -148,23 +140,18 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
 class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
     """Filtered continuous data interface for Stavisky conversion"""
 
-    default_data_kwargs: dict = dict(dtype="int16", encoding="buffer", shape=(300, 256))
-
     def __init__(
         self,
         port: int,
         host: str,
         stream_name: str,
         data_field: str,
-        ts_key: str = "filtered_ephys",
+        ts_key: str = "FilteredRecording",
         frames_per_entry: int = 300,
         data_dtype: Optional[str] = None,
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = "timestamps",
-        nsp_timestamp_conversion: Optional[float] = 1.0 / 3.0e4,
-        nsp_timestamp_encoding: Optional[str] = "buffer",
-        nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = "int64",
-        nsp_timestamp_index: Optional[int] = None,
+        nsp_timestamp_kwargs: dict = dict(),
         load_timestamps: bool = True,
         chunk_size: Optional[int] = None,
     ):
@@ -178,10 +165,7 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
             data_dtype=data_dtype,
             data_kwargs=data_kwargs,
             nsp_timestamp_field=nsp_timestamp_field,
-            nsp_timestamp_conversion=nsp_timestamp_conversion,
-            nsp_timestamp_encoding=nsp_timestamp_encoding,
-            nsp_timestamp_dtype=nsp_timestamp_dtype,
-            nsp_timestamp_index=nsp_timestamp_index,
+            nsp_timestamp_kwargs=nsp_timestamp_kwargs,
             load_timestamps=load_timestamps,
             chunk_size=chunk_size,
         )
@@ -267,23 +251,18 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
 class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
     """Smoothed spiking band power interface for Stavisky Redis conversion"""
 
-    default_data_kwargs: dict = dict(dtype="float32", encoding="buffer", shape=(1, 256))
-
     def __init__(
         self,
         port: int,
         host: str,
         stream_name: str,
         data_field: str,
-        ts_key: str = "spiking_band_power_smoothed",
+        ts_key: str = "SmoothedSpikingBandPower",
         frames_per_entry: int = 1,
         data_dtype: Optional[str] = None,
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = "input_nsp_timestamp",
-        nsp_timestamp_conversion: Optional[float] = 1.0 / 3.0e4,
-        nsp_timestamp_encoding: Optional[str] = "buffer",
-        nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = "int64",
-        nsp_timestamp_index: Optional[int] = 0,
+        nsp_timestamp_kwargs: dict = dict(),
         load_timestamps: bool = True,
         chunk_size: Optional[int] = None,
     ):
@@ -297,10 +276,7 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
             data_dtype=data_dtype,
             data_kwargs=data_kwargs,
             nsp_timestamp_field=nsp_timestamp_field,
-            nsp_timestamp_conversion=nsp_timestamp_conversion,
-            nsp_timestamp_encoding=nsp_timestamp_encoding,
-            nsp_timestamp_dtype=nsp_timestamp_dtype,
-            nsp_timestamp_index=nsp_timestamp_index,
+            nsp_timestamp_kwargs=nsp_timestamp_kwargs,
             load_timestamps=load_timestamps,
             chunk_size=chunk_size,
         )
@@ -402,23 +378,18 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
 class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface):
     """Smoothed threshold crossing interface for Stavisky conversion"""
 
-    default_data_kwargs: dict = dict(dtype="float32", encoding="buffer", shape=(1, 256))
-
     def __init__(
         self,
         port: int,
         host: str,
         stream_name: str,
         data_field: str,
-        ts_key: str = "thresh_crossing_smoothed",
+        ts_key: str = "SmoothedThreshCrossing",
         frames_per_entry: int = 1,
         data_dtype: Optional[str] = None,
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = "input_nsp_timestamp",
-        nsp_timestamp_conversion: Optional[float] = 1.0 / 3.0e4,
-        nsp_timestamp_encoding: Optional[str] = "buffer",
-        nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = "int64",
-        nsp_timestamp_index: Optional[int] = 0,
+        nsp_timestamp_kwargs: dict = dict(),
         load_timestamps: bool = True,
         chunk_size: Optional[int] = None,
     ):
@@ -432,10 +403,7 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
             data_dtype=data_dtype,
             data_kwargs=data_kwargs,
             nsp_timestamp_field=nsp_timestamp_field,
-            nsp_timestamp_conversion=nsp_timestamp_conversion,
-            nsp_timestamp_encoding=nsp_timestamp_encoding,
-            nsp_timestamp_dtype=nsp_timestamp_dtype,
-            nsp_timestamp_index=nsp_timestamp_index,
+            nsp_timestamp_kwargs=nsp_timestamp_kwargs,
             load_timestamps=load_timestamps,
             chunk_size=chunk_size,
         )
