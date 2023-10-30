@@ -80,7 +80,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         nsp_timestamp_index: Optional[int] = None,
         smoothing_kwargs: dict = {},
         load_timestamps: bool = True,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         """Base class for dual timestamp handling
 
@@ -125,7 +125,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         if data_dtype is not None:
             data_kwargs["dtype"] = data_dtype
         self.data_kwargs.update(data_kwargs)
-        self.chunk_size = chunk_size
+        self.buffer_gb = buffer_gb
         if load_timestamps:
             self._entry_ids, self._timestamps, self._nsp_timestamps = self.get_original_timestamps(
                 frames_per_entry=frames_per_entry,
@@ -196,7 +196,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             timestamp_encoding=nsp_timestamp_encoding,
             timestamp_dtype=nsp_timestamp_dtype,
             timestamp_index=nsp_timestamp_index,
-            chunk_size=self.chunk_size,
+            buffer_gb=self.buffer_gb,
         )
         if smoothing_kwargs:
             redis_timestamps = smooth_timestamps(
@@ -245,7 +245,6 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         stub_test: bool = False,
         use_chunk_iterator: bool = False,
         iterator_opts: dict = {},
-        chunk_size: Optional[int] = None,
     ):
         # Instantiate Redis client and check connection
         stream_name = self.source_data["stream_name"]
@@ -253,17 +252,19 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         assert client.xlen(stream_name) > 0
 
         # set max read len if stub_test
-        max_len = client.xlen(stream_name) // 4 if stub_test else np.inf
+        max_len = client.xlen(stream_name) // 4 if stub_test else None
 
         # make iterators
+        if "buffer_gb" not in iterator_opts:
+            iterator_opts["buffer_gb"] = self.buffer_gb
         if not use_chunk_iterator:
             data_dict = read_stream_fields(
                 client=client,
                 stream_name=stream_name,
                 field_kwargs={data_field: self.data_kwargs},
                 return_ids=False,
-                chunk_size=(chunk_size or self.chunk_size),
                 max_stream_len=max_len,
+                **iterator_opts,
             )
             iterator = np.concatenate(data_dict[data_field], axis=0)
         else:
@@ -299,13 +300,14 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         timestamps = self.get_timestamps()
         assert timestamps is not None, "Timestamps must be loaded before calling `add_to_processing_module()`"
         nsp_timestamps = self.get_timestamps(nsp=True)
+        data_len = data._get_maxshape()[0] if isinstance(data, RedisDataChunkIterator) else data.shape[0]
         if stub_test:
-            timestamps = timestamps[: len(data)]
+            timestamps = timestamps[:data_len]
             if nsp_timestamps is not None:
-                nsp_timestamps = nsp_timestamps[: len(data)]
-        assert len(timestamps) == len(data), "Timestamps and data have different lengths!"
+                nsp_timestamps = nsp_timestamps[:data_len]
+        assert len(timestamps) == data_len, "Timestamps and data have different lengths!"
         if nsp_timestamps is not None:
-            assert len(nsp_timestamps) == len(data), "Timestamps and data have different lengths!"
+            assert len(nsp_timestamps) == data_len, "Timestamps and data have different lengths!"
 
         # create timeseries objs
         data_to_add = []

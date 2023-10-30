@@ -13,6 +13,20 @@ def safe_decode(string_or_bytes: Union[str, bytes], encoding="utf-8"):
         return str(string_or_bytes, encoding=encoding)
 
 
+def buffer_gb_to_entry_count(
+    client: redis.Redis,
+    stream_name: str,
+    buffer_gb: Union[float, None],
+):
+    if buffer_gb is None:
+        return None
+    entry = client.xrange(stream_name, count=1)[0]
+    entry_bytes = sys.getsizeof(entry[0]) + sys.getsizeof(entry[1]) + sum([sys.getsizeof(v) for v in entry[1].values()])
+    buffer_bytes = buffer_gb * 1e9
+    count = max(buffer_bytes // entry_bytes, 1)  # read at least 1 entry
+    return count
+
+
 def read_entry(
     entry: dict,
     field: Union[bytes, str],
@@ -50,7 +64,7 @@ def read_stream_fields(
     stream_name: str,
     field_kwargs: dict[str, dict] = {},
     return_ids: bool = True,
-    chunk_size: Optional[int] = None,
+    buffer_gb: Optional[float] = None,
     max_stream_len: Optional[int] = None,
     min_id: Optional[bytes] = None,
     max_id: Optional[bytes] = None,
@@ -67,8 +81,9 @@ def read_stream_fields(
     max_stream_len = max_stream_len or np.inf
     min_id = min_id or "-"
     max_id = max_id or "+"
+    count = buffer_gb_to_entry_count(client=client, stream_name=stream_name, buffer_gb=buffer_gb)
     field = list(field_data.keys())[0]
-    stream_entries = client.xrange(stream_name, min=min_id, max=max_id, count=chunk_size)
+    stream_entries = client.xrange(stream_name, min=min_id, max=max_id, count=count)
     while len(stream_entries) > 0 and len(field_data[field]) < max_stream_len:
         # get ids if desired
         if return_ids:
@@ -79,7 +94,7 @@ def read_stream_fields(
                 field_data[field].append(read_entry(entry=entry[1], field=field, **kwargs))
         # read next entries
         # '(' notation means exclusive range: see https://redis.io/commands/xrange/
-        stream_entries = client.xrange(stream_name, min=b"(" + stream_entries[-1][0], max=max_id, count=chunk_size)
+        stream_entries = client.xrange(stream_name, min=b"(" + stream_entries[-1][0], max=max_id, count=count)
     # return
     return field_data
 
@@ -135,9 +150,10 @@ class RedisDataChunkIterator(GenericDataChunkIterator):
         )
         # get entries per chunk and buffer
         entries_per_chunk = max(chunk_bytes // entry_bytes, 1)  # read at least 1 entry
-        entries_per_chunk = min(entries_per_chunk, self.max_stream_len)
         entries_per_buffer = (buffer_bytes // (entries_per_chunk * entry_bytes)) * entries_per_chunk
-        entries_per_buffer = min(entries_per_buffer, self.max_stream_len)
+        if self.max_stream_len is not None:
+            entries_per_chunk = min(entries_per_chunk, self.max_stream_len)
+            entries_per_buffer = min(entries_per_buffer, self.max_stream_len)
         # get chunk and buffer shapes
         data = read_entry(entry=entry[1], field=self.field, **self.read_kwargs)
         chunk_shape = (entries_per_chunk * data.shape[0], data.shape[1])
@@ -147,8 +163,7 @@ class RedisDataChunkIterator(GenericDataChunkIterator):
     def _get_data(self, selection: tuple[slice]):
         # get entry idx range to read
         start_idx = selection[0].start // self.frames_per_entry
-        end_idx = selection[0].end // self.frames_per_entry
-        end_idx += int((selection[0].end % self.frames_per_entry) > 0)
+        end_idx = (selection[0].stop - 1) // self.frames_per_entry  # xrange max is inclusive
         # convert to entry id
         start_id = self.entry_ids[start_idx]
         end_id = self.entry_ids[end_idx]
@@ -158,13 +173,13 @@ class RedisDataChunkIterator(GenericDataChunkIterator):
             [read_entry(entry=entry[1], field=self.field, **self.read_kwargs) for entry in entries], axis=0
         )
         # extra slice if necessary
-        if (selection[0].start % self.frames_per_entry) != 0:
+        if (selection[0].start % self.frames_per_entry) != 0 or (selection[0].stop % self.frames_per_entry) != 0:
             start_offset = selection[0].start % self.frames_per_entry
-            data = data[start_offset : (start_offset + selection[0].end - selection[0].start)]
+            data = data[start_offset : (start_offset + selection[0].stop - selection[0].start)]
         return data
 
     def _get_dtype(self):
-        return self.read_kwargs.get("dtype")
+        return np.dtype(self.read_kwargs.get("dtype"))
 
     def _get_maxshape(self):
         entry = self.client.xrange(self.stream_name, count=1)[0][1]
