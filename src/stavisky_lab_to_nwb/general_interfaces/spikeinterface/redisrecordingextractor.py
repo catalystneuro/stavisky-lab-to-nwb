@@ -64,7 +64,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
             Necessary kwargs for reading the additional timestamps.
             See `get_stream_ids_and_timestamps()`.
         smoothing_kwargs : dict, default: {}
-            Parameters for `utils.timestamps.smooth_timestamps()`. 
+            Parameters for `utils.timestamps.smooth_timestamps()`.
             Timestamp smoothing is currently only applied to the Redis
             timestamps
         gain_to_uv : float, optional
@@ -79,7 +79,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
             (frames_per_entry, channel_count)
         buffer_gb : float, optional
             The amount of data to read simultaneously when
-            iterating through the Redis stream, in gb. If `None`, the 
+            iterating through the Redis stream, in gb. If `None`, the
             entire stream will be read from Redis at once
         """
         # Instantiate Redis client and check connection
@@ -227,7 +227,7 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
             A list containing the entry ID for each entry in the Redis
             stream in order
         nsp_timestamps : numpy.ndarray, optional
-            An array containing NSP timestamps for each frame, if 
+            An array containing NSP timestamps for each frame, if
             available
         frames_per_entry : int, default: 1
             Number of frames (i.e. a single time point) contained

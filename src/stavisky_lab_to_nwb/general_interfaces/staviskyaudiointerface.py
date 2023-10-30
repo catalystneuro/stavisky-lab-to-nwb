@@ -69,7 +69,9 @@ class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
         )
         single_value_columns = np.array([(len(np.unique(analog[:, i])) == 1) for i in range(analog.shape[-1])])
         if np.any(single_value_columns):
-            print(f"StaviskyAudioInterface: Dropping columns {np.nonzero(single_value_columns)[0]} as they have only one unique value")
+            print(
+                f"StaviskyAudioInterface: Dropping columns {np.nonzero(single_value_columns)[0]} as they have only one unique value"
+            )
             analog = analog[:, ~single_value_columns]
             if analog.shape[-1] == 0:
                 print(f"StaviskyAudioInterface: All data dropped. Skipping this data stream...")

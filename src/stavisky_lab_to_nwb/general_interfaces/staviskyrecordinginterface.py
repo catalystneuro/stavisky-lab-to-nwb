@@ -74,7 +74,7 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
             Necessary kwargs for reading the additional timestamps.
             See `get_stream_ids_and_timestamps()`.
         smoothing_kwargs : dict, default: {}
-            Parameters for `utils.timestamps.smooth_timestamps()`. 
+            Parameters for `utils.timestamps.smooth_timestamps()`.
             Timestamp smoothing is currently only applied to the Redis
             timestamps
         gain_to_uv : float, optional
@@ -89,7 +89,7 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
             (frames_per_entry, channel_count)
         buffer_gb : float, optional
             The amount of data to read simultaneously when
-            iterating through the Redis stream, in gb. If `None`, the 
+            iterating through the Redis stream, in gb. If `None`, the
             entire stream will be read from Redis at once
         verbose : bool, default: True
             If True, will print out additional information.
@@ -97,7 +97,7 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
             The key of this ElectricalSeries when saved to NWB
         channel_mapping_file: Path or str, optional
             Path to JSON file specifying channel mapping to unscramble
-            continuous data channels. Provided path can be either 
+            continuous data channels. Provided path can be either
             absolute, or relative to `src/stavisky_lab_to_nwb/`
         """
         if channel_mapping_file is not None:

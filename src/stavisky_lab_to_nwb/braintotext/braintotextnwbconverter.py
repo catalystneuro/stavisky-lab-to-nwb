@@ -58,12 +58,12 @@ class BrainToTextNWBConverter(NWBConverter):
         default_config = load_dict_from_file(conversion_config_path)
         default_source_data = {
             interface_name: default_config[interface_name].get("source_data", {})
-            for interface_name in default_config.keys() 
+            for interface_name in default_config.keys()
             if interface_name not in exclude_interfaces
         }
         default_conversion_options = {
             interface_name: default_config[interface_name].get("conversion_options", {})
-            for interface_name in default_config.keys() 
+            for interface_name in default_config.keys()
             if interface_name not in exclude_interfaces
         }
         for name, data_interface in self.data_interface_classes.items():
@@ -100,7 +100,7 @@ class BrainToTextNWBConverter(NWBConverter):
             else:
                 self.data_interface_objects[name] = data_interface(**interface_source_data)
         self.default_conversion_options = default_conversion_options
-                
+
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,

@@ -12,10 +12,10 @@ from stavisky_lab_to_nwb.braintotext import BrainToTextNWBConverter
 
 
 def session_to_nwb(
-    port: int, 
-    host: str, 
+    port: int,
+    host: str,
     conversion_config_path: Union[str, Path],
-    output_dir_path: Union[str, Path], 
+    output_dir_path: Union[str, Path],
     source_data: dict = dict(),
     conversion_options: dict = dict(),
     stub_test: bool = False,
@@ -42,7 +42,7 @@ def session_to_nwb(
         conversion_config_path=conversion_config_path,
         port=port,
         host=host,
-        source_data=source_data, 
+        source_data=source_data,
         session_start_time=session_start_time,
         exclude_interfaces=exclude_interfaces,
     )
@@ -75,8 +75,8 @@ def session_to_nwb(
 
     # Run conversion
     converter.run_conversion(
-        metadata=metadata, 
-        nwbfile_path=nwbfile_path, 
+        metadata=metadata,
+        nwbfile_path=nwbfile_path,
         conversion_options=conversion_options,
         stub_test=stub_test,
     )

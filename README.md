@@ -45,7 +45,7 @@ Each conversion is organized in a directory of its own in the `src` directory, w
         │   │   ├── spikeinterface
         │   │   ├── staviskysortinginterface.py
         │   │   ├── staviskyrecordinginterface.py
-        
+
         │   │   └── __init__.py
         │   ├── utils
         │   │   ├── redis_io.py
@@ -84,7 +84,7 @@ With your Redis server running, you can run a specific conversion with the follo
 python src/stavisky_lab_to_nwb/braintotext/braintotext_convert_session.py
 ```
 
-### Brain-to-text conversion 
+### Brain-to-text conversion
 
 The `braintotext` conversion function can be found in `src/stavisky_lab_to_nwb/braintotext/braintotext_convert_session.py`. The `session_to_nwb` function can be run by running the file directly, as shown above, or by importing the function elsewhere and running it in an alternate script or notebook. The function takes in a number of arguments:
 
@@ -97,7 +97,7 @@ The `braintotext` conversion function can be found in `src/stavisky_lab_to_nwb/b
 * stub_test: whether to convert and save only a portion of the data, useful only for testing purposes
 * exclude_interfaces: list of names of interfaces to exclude from the conversion
 
-User configuration of the conversions primarily involves editing/creating YAML files. The first YAML file, `braintotext_metadata.yml`, containes experimental metadata, like subject age, that should be provided by the experimenter (if appropriate to share). The other YAML file, `braintotext_conversion.yml`, essentially specifies all keyword arguments necessary to instantiate and run the data interfaces used to read, convert, and write data. 
+User configuration of the conversions primarily involves editing/creating YAML files. The first YAML file, `braintotext_metadata.yml`, containes experimental metadata, like subject age, that should be provided by the experimenter (if appropriate to share). The other YAML file, `braintotext_conversion.yml`, essentially specifies all keyword arguments necessary to instantiate and run the data interfaces used to read, convert, and write data.
 
 Each data interface is defined in `braintotextnwbconverter.py`, where `BrainToTextNWBConverter.data_interface_classes` specifies the class for each interface. Each top-level entry in `braintotext_conversion.yml` corresponds to one of these interfaces, with sub-dictionaries `source_data` for instantiating the class and `conversion_options` for configuring how it converts the data. For each interface, you can find more documentation on the accepted kwargs in their respective files, specifically their `__init__` functions for `source_data` and their `add_to_nwbfile` functions for `conversion_options`.
 

@@ -61,7 +61,7 @@ class RedisStreamSortingExtractor(BaseSorting):
             Necessary kwargs for reading the additional timestamps.
             See `get_stream_ids_and_timestamps()`.
         smoothing_kwargs : dict, default: {}
-            Parameters for `utils.timestamps.smooth_timestamps()`. 
+            Parameters for `utils.timestamps.smooth_timestamps()`.
             Timestamp smoothing is currently only applied to the Redis
             timestamps
         unit_dim : int, default: 0
@@ -79,7 +79,7 @@ class RedisStreamSortingExtractor(BaseSorting):
             with `RedisStreamSortingExtractor.set_clock()`
         buffer_gb : float, optional
             The amount of data to read simultaneously when
-            iterating through the Redis stream, in gb. If `None`, the 
+            iterating through the Redis stream, in gb. If `None`, the
             entire stream will be read from Redis at once
         """
         # Instantiate Redis client and check connection
@@ -360,7 +360,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
             (frames_per_entry, unit_count)
         buffer_gb : float, optional
             The amount of data to read simultaneously when
-            iterating through the Redis stream, in gb. If `None`, the 
+            iterating through the Redis stream, in gb. If `None`, the
             entire stream will be read from Redis at once
         """
         # initialize base class

@@ -12,7 +12,7 @@ def safe_decode(string_or_bytes: Union[str, bytes], encoding="utf-8"):
     else:
         return str(string_or_bytes, encoding=encoding)
 
-    
+
 def buffer_gb_to_entry_count(
     client: redis.Redis,
     stream_name: str,

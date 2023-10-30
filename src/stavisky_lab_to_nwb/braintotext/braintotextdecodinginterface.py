@@ -83,9 +83,7 @@ class BrainToTextPhonemeLogitsInterface(BaseDataInterface):
                 elif b"logits" in entry[1].keys():
                     trial_logits.append(entry)
             # read next `count` entries
-            decoder_output = r.xrange(
-                self.source_data["stream_name"], count=count, min=b"(" + decoder_output[-1][0]
-            )
+            decoder_output = r.xrange(self.source_data["stream_name"], count=count, min=b"(" + decoder_output[-1][0])
         # stack all data
         logits = np.concatenate(logits, axis=0)
         timestamps = np.concatenate(timestamps)
@@ -167,9 +165,7 @@ class BrainToTextDecodedTextInterface(BaseDataInterface):
                 elif b"final_decoded_sentence" in entry[1].keys():  # reset on trial end
                     last_text = ""
             # read next `count` entries
-            decoder_output = r.xrange(
-                self.source_data["stream_name"], count=count, min=b"(" + decoder_output[-1][0]
-            )
+            decoder_output = r.xrange(self.source_data["stream_name"], count=count, min=b"(" + decoder_output[-1][0])
         # stack timestamps
         decoded_timestamps = np.array(decoded_timestamps, dtype="float64")
 

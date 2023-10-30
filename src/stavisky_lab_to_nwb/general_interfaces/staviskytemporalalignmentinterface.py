@@ -97,7 +97,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             default 1
         data_dtype : str, type, or numpy.dtype
             The dtype of the data, see
-            `utils.redis_io.read_entry()`. 
+            `utils.redis_io.read_entry()`.
         data_kwargs : dict
             Additional kwargs for reading the data, see
             `utils.redis_io.read_entry()`. If `data_dtype` is
@@ -106,13 +106,13 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         nsp_timestamp_field : str, optional
             The source of the nsp timestamp information in the Redis stream. By
             default, Redis timestamps are always read. If `nsp_timestamp_field`
-            is specified, the timestamp source is assumed to be a data 
+            is specified, the timestamp source is assumed to be a data
             field present in each entry and is saved as `_nsp_timestamps`
         nsp_timestamp_kwargs : dict, default: {}
             Necessary kwargs for reading the additional timestamps.
             See `get_stream_ids_and_timestamps()`.
         smoothing_kwargs : dict, default: {}
-            Parameters for `utils.timestamps.smooth_timestamps()`. 
+            Parameters for `utils.timestamps.smooth_timestamps()`.
             Timestamp smoothing is currently only applied to the Redis
             timestamps
         load_timestamps : bool, default: True
@@ -123,7 +123,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             stream
         buffer_gb : float, optional
             The amount of data to read simultaneously when
-            iterating through the Redis stream, in gb. If `None`, the 
+            iterating through the Redis stream, in gb. If `None`, the
             entire stream will be read from Redis at once
         """
         super().__init__(port=port, host=host, stream_name=stream_name, data_field=data_field)
@@ -131,7 +131,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         if "shape" not in data_kwargs:
             data_kwargs["shape"] = (frames_per_entry, -1)  # doesn't handle transposed data!
         if "encoding" not in data_kwargs:
-            data_kwargs["encoding"] = "buffer" # default is force buffer encoding
+            data_kwargs["encoding"] = "buffer"  # default is force buffer encoding
         if data_dtype is not None:
             data_kwargs["dtype"] = data_dtype
         self.data_kwargs = data_kwargs
@@ -168,10 +168,10 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             Necessary kwargs for reading the additional timestamps.
             See `get_stream_ids_and_timestamps()`
         smoothing_kwargs : dict, default: {}
-            Parameters for `utils.timestamps.smooth_timestamps()`. 
+            Parameters for `utils.timestamps.smooth_timestamps()`.
             Timestamp smoothing is currently only applied to the Redis
             timestamps
-        
+
         Returns
         -------
         entry_ids : list
@@ -249,7 +249,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
     ):
         """Extract data from stream as an
         array or data chunk iterator
-        
+
         Parameters
         ----------
         client : redis.Redis

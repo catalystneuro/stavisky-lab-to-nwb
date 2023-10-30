@@ -1,6 +1,6 @@
 Recording:
   # interface: StaviskyRecordingInterface (`general_interfaces/staviskyrecordinginterface.py`)
-  source_data: 
+  source_data:
     es_key: "ElectricalSeries" # string
     stream_name: "continuousNeural" # string
     data_field: "samples" # string
@@ -27,7 +27,7 @@ Recording:
 
 Sorting:
   # interface: StaviskySortingInterface (`general_interfaces/staviskysortinginterface.py`)
-  source_data: 
+  source_data:
     stream_name: "binnedFeatures_10ms" # string
     data_field: "threshold_crossings" # string
     data_dtype: "int16" # string
@@ -47,7 +47,7 @@ Sorting:
   conversion_options:
     units_description: "Unsorted threshold crossings binned at 10 ms resolution for each recording channel." # string
     write_as: "processing" # string, optional
-  
+
 Audio:
   # interface: StaviskyAudioInterface (`general_interfaces/staviskyaudiointerface.py`)
   source_data:
@@ -116,7 +116,7 @@ SpikingBandPower20ms:
     # buffer_gb: null # float, optional
   conversion_options: {}
 
-FilteredRecording: 
+FilteredRecording:
   # interface: StaviskyFilteredRecordingInterface (`general_interfaces/staviskyecephysinterface.py`)
   source_data:
     ts_key: "FilteredRecording" # string
@@ -189,12 +189,12 @@ PhonemeLogits:
   source_data: {}
   conversion_options: {}
 
-DecodedText: 
+DecodedText:
   # interface: BrainToTextDecodedTextInterface (`braintotext/braintotextdecodinginterface.py`)
   source_data: {}
   conversion_options: {}
 
-Trials: 
+Trials:
   # interface: BrainToTextTrialsInterface (`braintotext/braintotexttrialsinterface.py`)
   source_data: {}
   conversion_options: {}
