@@ -56,6 +56,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 ),
                 gain_to_uv=0.01,
                 channel_dim=1,
+                buffer_gb=0.2,
             )
         )
     )
@@ -87,7 +88,6 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                     timestamp_dtype="int64",
                     timestamp_index=0,
                 ),
-                chunk_size=50000,
                 clock="nsp",
             )
         )
@@ -117,7 +117,7 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 nsp_timestamp_conversion=(1.0 / 3.0e4),
                 nsp_timestamp_encoding="buffer",
                 nsp_timestamp_dtype="int64",
-                chunk_size=10000,
+                buffer_gb=0.2,
             )
         )
     )
@@ -145,7 +145,6 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 nsp_timestamp_encoding="buffer",
                 nsp_timestamp_dtype="int64",
                 nsp_timestamp_index=0,
-                chunk_size=10000,
             )
         )
     )
@@ -171,7 +170,6 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 nsp_timestamp_encoding="buffer",
                 nsp_timestamp_dtype="int64",
                 nsp_timestamp_index=0,
-                chunk_size=10000,
             )
         )
     )
@@ -197,7 +195,6 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 nsp_timestamp_encoding="buffer",
                 nsp_timestamp_dtype="int64",
                 nsp_timestamp_index=0,
-                chunk_size=10000,
             )
         )
     )
@@ -221,7 +218,6 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 nsp_timestamp_encoding="buffer",
                 nsp_timestamp_dtype="int64",
                 nsp_timestamp_index=0,
-                chunk_size=10000,
             )
         )
     )
@@ -247,7 +243,6 @@ def session_to_nwb(port: int, host: str, output_dir_path: Union[str, Path], stub
                 nsp_timestamp_encoding="buffer",
                 nsp_timestamp_dtype="int64",
                 smoothing_kwargs=dict(window_len="max", sampling_frequency=3.0e4),
-                chunk_size=10000,
             )
         )
     )
