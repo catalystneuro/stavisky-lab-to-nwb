@@ -11,7 +11,7 @@ def safe_decode(string_or_bytes: Union[str, bytes], encoding="utf-8"):
         return string_or_bytes
     else:
         return str(string_or_bytes, encoding=encoding)
-    
+
 
 def buffer_gb_to_entry_count(
     client: redis.Redis,
@@ -21,11 +21,9 @@ def buffer_gb_to_entry_count(
     if buffer_gb is None:
         return None
     entry = client.xrange(stream_name, count=1)[0]
-    entry_bytes = (
-        sys.getsizeof(entry[0]) + sys.getsizeof(entry[1]) + sum([sys.getsizeof(v) for v in entry[1].values()])
-    )
+    entry_bytes = sys.getsizeof(entry[0]) + sys.getsizeof(entry[1]) + sum([sys.getsizeof(v) for v in entry[1].values()])
     buffer_bytes = buffer_gb * 1e9
-    count = max(buffer_bytes // entry_bytes, 1) # read at least 1 entry
+    count = max(buffer_bytes // entry_bytes, 1)  # read at least 1 entry
     return count
 
 
