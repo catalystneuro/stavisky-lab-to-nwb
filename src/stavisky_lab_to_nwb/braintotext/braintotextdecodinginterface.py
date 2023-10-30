@@ -163,6 +163,11 @@ class BrainToTextDecodedTextInterface(BaseDataInterface):
                         decoded_timestamps.append(timestamp)
                         last_text = curr_text
                 elif b"final_decoded_sentence" in entry[1].keys():  # reset on trial end
+                    curr_text = str(entry[1][b"final_decoded_sentence"], "utf-8").strip()
+                    if curr_text != last_text:  # if decoded text changes, log it
+                        timestamp = int(entry[0].split(b"-")[0]) / 1000.0 + self.aligned_starting_time
+                        decoded_text.append(curr_text)
+                        decoded_timestamps.append(timestamp)
                     last_text = ""
             # read next `count` entries
             decoder_output = r.xrange(self.source_data["stream_name"], count=count, min=b"(" + decoder_output[-1][0])
