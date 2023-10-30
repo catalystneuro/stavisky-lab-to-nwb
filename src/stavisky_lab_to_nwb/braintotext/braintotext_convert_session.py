@@ -86,9 +86,9 @@ if __name__ == "__main__":
     # Parameters for conversion
     port = 6379
     host = "localhost"
-    conversion_config_path = Path("./braintotext_conversion.yaml")
+    conversion_config_path = Path(__file__).parent / Path("braintotext_conversion.yaml")
     output_dir_path = Path("~/conversion_nwb/stavisky-lab-to-nwb/braintotext/").expanduser()
-    stub_test = False
+    stub_test = True
 
     session_to_nwb(
         port=port,

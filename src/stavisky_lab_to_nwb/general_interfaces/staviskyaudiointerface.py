@@ -26,7 +26,7 @@ class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
         nsp_timestamp_kwargs: dict = dict(),
         smoothing_kwargs: dict = dict(window_len="max", sampling_frequency=3.0e4),
         load_timestamps: bool = True,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         super().__init__(
             port=port,
@@ -40,7 +40,7 @@ class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
             nsp_timestamp_kwargs=nsp_timestamp_kwargs,
             smoothing_kwargs=smoothing_kwargs,
             load_timestamps=load_timestamps,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
         )
 
     def add_to_nwbfile(
@@ -48,7 +48,6 @@ class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
-        chunk_size: Optional[int] = None,
         use_chunk_iterator: bool = False,
         iterator_opts: dict = dict(),
     ):
@@ -65,7 +64,6 @@ class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
         analog = self.get_data_iterator(
             client=r,
             stub_test=stub_test,
-            chunk_size=chunk_size,
             use_chunk_iterator=use_chunk_iterator,
             iterator_opts=iterator_opts,
         )

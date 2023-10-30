@@ -27,7 +27,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
         smoothing_kwargs: dict = dict(),
         gain_to_uv: Optional[float] = None,
         channel_dim: int = 0,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
         channel_mapping: Optional[list] = None,
     ):
         """Initialize the RedisStreamRecordingExtractor
@@ -77,12 +77,10 @@ class RedisStreamRecordingExtractor(BaseRecording):
             (channel_count, frames_per_entry). If channel_dim = 1,
             then the data are assumed to originally be of shape
             (frames_per_entry, channel_count)
-        chunk_size : int, optional
-            The number of entries to read simultaneously when
-            loading timestamps and stream IDs. If `None`, the 
-            entire stream will be read from Redis at once. The chunk
-            size for writing the recording to disk is determined separately
-            by the data chunk iterator.
+        buffer_gb : float, optional
+            The amount of data to read simultaneously when
+            iterating through the Redis stream, in gb. If `None`, the 
+            entire stream will be read from Redis at once
         """
         # Instantiate Redis client and check connection
         self._client = redis.Redis(
@@ -101,7 +99,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
             timestamp_field=nsp_timestamp_field,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
             **nsp_timestamp_kwargs,
         )
         if smoothing_kwargs:

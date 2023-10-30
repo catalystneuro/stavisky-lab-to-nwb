@@ -9,7 +9,7 @@ from hdmf.backends.hdf5 import H5DataIO
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools.nwb_helpers import get_module
 
-from ..utils.redis_io import read_entry
+from ..utils.redis_io import read_entry, buffer_gb_to_entry_count
 
 
 class BrainToTextPhonemeLogitsInterface(BaseDataInterface):
@@ -40,7 +40,7 @@ class BrainToTextPhonemeLogitsInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         # initialize redis client and check connection
         r = redis.Redis(
@@ -55,7 +55,8 @@ class BrainToTextPhonemeLogitsInterface(BaseDataInterface):
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
 
         # loop through data and make arrays
-        decoder_output = r.xrange(self.source_data["stream_name"], count=chunk_size)
+        count = buffer_gb_to_entry_count(client=r, stream_name=self.source_data["stream_name"], buffer_gb=buffer_gb)
+        decoder_output = r.xrange(self.source_data["stream_name"], count=count)
         logits = []
         timestamps = []
         while len(decoder_output) > 0:  # read in chunks until entire stream has been read
@@ -81,9 +82,9 @@ class BrainToTextPhonemeLogitsInterface(BaseDataInterface):
                     trial_logits = []  # reset data stack
                 elif b"logits" in entry[1].keys():
                     trial_logits.append(entry)
-            # read next `chunk_size` entries
+            # read next `count` entries
             decoder_output = r.xrange(
-                self.source_data["stream_name"], count=chunk_size, min=b"(" + decoder_output[-1][0]
+                self.source_data["stream_name"], count=count, min=b"(" + decoder_output[-1][0]
             )
         # stack all data
         logits = np.concatenate(logits, axis=0)
@@ -134,7 +135,7 @@ class BrainToTextDecodedTextInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         # initialize redis client and check connection
         r = redis.Redis(
@@ -149,7 +150,8 @@ class BrainToTextDecodedTextInterface(BaseDataInterface):
         processing_module = get_module(nwbfile=nwbfile, name=module_name, description=module_description)
 
         # loop through data and log decoder output
-        decoder_output = r.xrange(self.source_data["stream_name"], count=chunk_size)
+        count = buffer_gb_to_entry_count(client=r, stream_name=self.source_data["stream_name"], buffer_gb=buffer_gb)
+        decoder_output = r.xrange(self.source_data["stream_name"], count=count)
         decoded_timestamps = []
         decoded_text = []
         last_text = ""
@@ -164,9 +166,9 @@ class BrainToTextDecodedTextInterface(BaseDataInterface):
                         last_text = curr_text
                 elif b"final_decoded_sentence" in entry[1].keys():  # reset on trial end
                     last_text = ""
-            # read next `chunk_size` entries
+            # read next `count` entries
             decoder_output = r.xrange(
-                self.source_data["stream_name"], count=chunk_size, min=b"(" + decoder_output[-1][0]
+                self.source_data["stream_name"], count=count, min=b"(" + decoder_output[-1][0]
             )
         # stack timestamps
         decoded_timestamps = np.array(decoded_timestamps, dtype="float64")

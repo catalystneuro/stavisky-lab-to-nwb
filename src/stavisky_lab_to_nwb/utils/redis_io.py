@@ -12,6 +12,22 @@ def safe_decode(string_or_bytes: Union[str, bytes], encoding="utf-8"):
     else:
         return str(string_or_bytes, encoding=encoding)
 
+    
+def buffer_gb_to_entry_count(
+    client: redis.Redis,
+    stream_name: str,
+    buffer_gb: Union[float, None],
+):
+    if buffer_gb is None:
+        return None
+    if buffer_gb <= 0.0:
+        raise ValueError(f"`buffer_gb` should be > 0, got {buffer_gb}")
+    entry = client.xrange(stream_name, count=1)[0]
+    entry_bytes = sys.getsizeof(entry[0]) + sys.getsizeof(entry[1]) + sum([sys.getsizeof(v) for v in entry[1].values()])
+    buffer_bytes = buffer_gb * 1e9
+    count = int(max(buffer_bytes // entry_bytes, 1))  # read at least 1 entry
+    return count
+
 
 def read_entry(
     entry: dict,
@@ -50,7 +66,7 @@ def read_stream_fields(
     stream_name: str,
     field_kwargs: dict[str, dict] = {},
     return_ids: bool = True,
-    chunk_size: Optional[int] = None,
+    buffer_gb: Optional[float] = None,
     max_stream_len: Optional[int] = None,
     min_id: Optional[bytes] = None,
     max_id: Optional[bytes] = None,
@@ -67,9 +83,10 @@ def read_stream_fields(
     max_stream_len = max_stream_len or np.inf
     min_id = min_id or "-"
     max_id = max_id or "+"
-    field = list(field_data.keys())[0]
-    stream_entries = client.xrange(stream_name, min=min_id, max=max_id, count=chunk_size)
-    while len(stream_entries) > 0 and len(field_data[field]) < max_stream_len:
+    count = buffer_gb_to_entry_count(client=client, stream_name=stream_name, buffer_gb=buffer_gb)
+    check_field = list(field_data.keys())[0]
+    stream_entries = client.xrange(stream_name, min=min_id, max=max_id, count=count)
+    while len(stream_entries) > 0 and len(field_data[check_field]) < max_stream_len:
         # get ids if desired
         if return_ids:
             field_data["ids"] += [entry[0] for entry in stream_entries]
@@ -79,7 +96,7 @@ def read_stream_fields(
                 field_data[field].append(read_entry(entry=entry[1], field=field, **kwargs))
         # read next entries
         # '(' notation means exclusive range: see https://redis.io/commands/xrange/
-        stream_entries = client.xrange(stream_name, min=b"(" + stream_entries[-1][0], max=max_id, count=chunk_size)
+        stream_entries = client.xrange(stream_name, min=b"(" + stream_entries[-1][0], max=max_id, count=count)
     # return
     return field_data
 

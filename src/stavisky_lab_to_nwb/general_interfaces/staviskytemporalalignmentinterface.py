@@ -75,7 +75,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         nsp_timestamp_kwargs: dict = dict(),
         smoothing_kwargs: dict = dict(),
         load_timestamps: bool = True,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         """Base class for dual timestamp handling
 
@@ -121,9 +121,9 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             for example by using `set_timestamps_from_interface()`
             with another interface loading data from the same Redis
             stream
-        chunk_size : int, optional
-            The number of entries to read simultaneously when
-            iterating through the Redis stream. If `None`, the 
+        buffer_gb : float, optional
+            The amount of data to read simultaneously when
+            iterating through the Redis stream, in gb. If `None`, the 
             entire stream will be read from Redis at once
         """
         super().__init__(port=port, host=host, stream_name=stream_name, data_field=data_field)
@@ -135,7 +135,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         if data_dtype is not None:
             data_kwargs["dtype"] = data_dtype
         self.data_kwargs = data_kwargs
-        self.chunk_size = chunk_size
+        self.buffer_gb = buffer_gb
         if load_timestamps:
             self._entry_ids, self._timestamps, self._nsp_timestamps = self.get_original_timestamps(
                 frames_per_entry=frames_per_entry,
@@ -196,7 +196,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             stream_name=self.source_data["stream_name"],
             frames_per_entry=frames_per_entry,
             timestamp_field=nsp_timestamp_field,
-            chunk_size=self.chunk_size,
+            buffer_gb=self.buffer_gb,
             **nsp_timestamp_kwargs,
         )
         if smoothing_kwargs:
@@ -245,8 +245,7 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         client: redis.Redis,
         stub_test: bool = False,
         use_chunk_iterator: bool = False,
-        iterator_opts: dict = {},
-        chunk_size: Optional[int] = None,
+        iterator_opts: dict = dict(),
     ):
         """Extract data from stream as an
         array or data chunk iterator
@@ -265,14 +264,6 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             may be problematic for extremely large streams
         iterator_opts : dict, default: {}
             Additional options for the data chunk iterator
-        chunk_size : int, optional
-            The number of entries to read simultaneously when
-            iterating through the Redis stream. If `None`, the 
-            `chunk_size` provided at interface initialization
-            will be used. This argument is only relevant if
-            `use_chunk_iterator=False`, as chunk parameters
-            should be specified in `iterator_opts` for the
-            data chunk iterator
         """
         # Instantiate Redis client and check connection
         stream_name = self.source_data["stream_name"]
@@ -283,14 +274,16 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         max_len = client.xlen(stream_name) // 4 if stub_test else None
 
         # make iterators
+        if "buffer_gb" not in iterator_opts:
+            iterator_opts["buffer_gb"] = self.buffer_gb
         if not use_chunk_iterator:
             data_dict = read_stream_fields(
                 client=client,
                 stream_name=stream_name,
                 field_kwargs={data_field: self.data_kwargs},
                 return_ids=False,
-                chunk_size=(chunk_size or self.chunk_size),
                 max_stream_len=max_len,
+                **iterator_opts,
             )
             iterator = np.concatenate(data_dict[data_field], axis=0)
         else:

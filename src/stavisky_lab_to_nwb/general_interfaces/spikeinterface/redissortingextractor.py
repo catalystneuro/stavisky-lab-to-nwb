@@ -6,7 +6,7 @@ from typing import Union, Optional, List, Tuple, Literal
 from warnings import warn
 
 from spikeinterface.core import BaseSorting, BaseSortingSegment, BaseRecording
-from ...utils.redis_io import read_entry
+from ...utils.redis_io import read_entry, buffer_gb_to_entry_count
 from ...utils.timestamps import get_stream_ids_and_timestamps
 
 
@@ -26,7 +26,7 @@ class RedisStreamSortingExtractor(BaseSorting):
         smoothing_kwargs: dict = dict(),
         unit_dim: int = 0,
         clock: Literal["redis", "nsp"] = "redis",
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         """Initialize the RedisStreamRecordingExtractor
 
@@ -67,13 +67,6 @@ class RedisStreamSortingExtractor(BaseSorting):
         unit_dim : int, default: 0
             If frames_per_entry > 1, then unit_dim indicates the
             axis ordering of the data in each entry. If unit_dim
-            = 0, then the data is assumed to originally be of shape
-            (unit_count, frames_per_entry). If unit_dim = 1,
-            then the data is assumed to originally be of shape
-            (frames_per_entry, unit_count)
-        unit_dim : int, default: 0
-            If frames_per_entry > 1, then unit_dim indicates the
-            axis ordering of the data in each entry. If unit_dim
             = 0, then the data are assumed to originally be of shape
             (unit_count, frames_per_entry). If channel_dim = 1,
             then the data are assumed to originally be of shape
@@ -84,10 +77,10 @@ class RedisStreamSortingExtractor(BaseSorting):
             "nsp", the NSP timestamps will be used. The
             clock can be toggled after initialization
             with `RedisStreamSortingExtractor.set_clock()`
-        chunk_size : int, optional
-            The number of entries to read simultaneously when
-            iterating through the Redis stream. If None,
-            all entries will be read at once
+        buffer_gb : float, optional
+            The amount of data to read simultaneously when
+            iterating through the Redis stream, in gb. If `None`, the 
+            entire stream will be read from Redis at once
         """
         # Instantiate Redis client and check connection
         self._client = redis.Redis(
@@ -107,7 +100,7 @@ class RedisStreamSortingExtractor(BaseSorting):
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
             timestamp_field=nsp_timestamp_field,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
             **nsp_timestamp_kwargs,
         )
         if smoothing_kwargs:
@@ -147,7 +140,7 @@ class RedisStreamSortingExtractor(BaseSorting):
             nsp_timestamps=nsp_timestamps,
             frames_per_entry=frames_per_entry,
             t_start=None,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
         )
         self.add_sorting_segment(sorting_segment)
 
@@ -326,7 +319,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         t_start: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
         unit_dim: int = 0,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[int] = None,
     ):
         """Initialize the RedisStreamRecordingSegment
 
@@ -358,13 +351,17 @@ class RedisStreamSortingSegment(BaseSortingSegment):
             start time
         sampling_frequency : float, optional
             The sampling frequency of the data in the segment
-        channel_dim : int, default: 0
-            If frames_per_entry > 1, then channel_dim indicates the
-            axis ordering of the data in each entry. If channel_dim
-            = 0, then the data is assumed to originally be of shape
-            (channel_count, frames_per_entry). If channel_dim = 1,
-            then the data is assumed to originally be of shape
-            (frames_per_entry, channel_count)
+        unit_dim : int, default: 0
+            If frames_per_entry > 1, then unit_dim indicates the
+            axis ordering of the data in each entry. If unit_dim
+            = 0, then the data are assumed to originally be of shape
+            (unit_count, frames_per_entry). If channel_dim = 1,
+            then the data are assumed to originally be of shape
+            (frames_per_entry, unit_count)
+        buffer_gb : float, optional
+            The amount of data to read simultaneously when
+            iterating through the Redis stream, in gb. If `None`, the 
+            entire stream will be read from Redis at once
         """
         # initialize base class
         BaseSortingSegment.__init__(self, t_start=t_start)
@@ -400,11 +397,12 @@ class RedisStreamSortingSegment(BaseSortingSegment):
 
         # make chunk size an init arg?
         self._spike_frames = None
-        self._load_spike_frames(chunk_size=chunk_size)
+        self._load_spike_frames(buffer_gb=buffer_gb)
 
-    def _load_spike_frames(self, chunk_size: int = 1000):
+    def _load_spike_frames(self, buffer_gb: Optional[float] = None):
         # initialize loop variables
-        stream_entries = self._client.xrange(self._stream_name, count=chunk_size)
+        count = buffer_gb_to_entry_count(client=self._client, stream_name=self._stream_name, buffer_gb=buffer_gb)
+        stream_entries = self._client.xrange(self._stream_name, count=count)
         frame_counter = 0
         spike_frames = []
         spike_labels = []
@@ -426,7 +424,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
                 # update base frame number
                 frame_counter += self._frames_per_entry
             # load next chunk of entries
-            stream_entries = self._client.xrange(self._stream_name, min=b"(" + stream_entries[-1][0], count=chunk_size)
+            stream_entries = self._client.xrange(self._stream_name, min=b"(" + stream_entries[-1][0], count=count)
         # stack all spike frames and labels
         spike_frames = np.concatenate(spike_frames, axis=0)
         spike_labels = np.concatenate(spike_labels, axis=0)
