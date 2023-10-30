@@ -32,7 +32,7 @@ class StaviskySortingInterface(BaseSortingExtractorInterface, DualTimestampTempo
         smoothing_kwargs: dict = dict(),
         unit_dim: int = 0,
         clock: Literal["redis", "nsp"] = "nsp",
-        chunk_size: int = 10000,
+        buffer_gb: Optional[float] = None,
         verbose: bool = True,
     ):
         super().__init__(
@@ -50,7 +50,7 @@ class StaviskySortingInterface(BaseSortingExtractorInterface, DualTimestampTempo
             smoothing_kwargs=smoothing_kwargs,
             unit_dim=unit_dim,
             clock=clock,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
         )
 
     def get_original_timestamps(self):
@@ -67,7 +67,7 @@ class StaviskySortingInterface(BaseSortingExtractorInterface, DualTimestampTempo
             stream_name=self.source_data["stream_name"],
             frames_per_entry=self.source_data.get("frames_per_entry", 1),
             timestamp_field=self.source_data.get("timestamp_field"),
-            chunk_size=self.source_data.get("chunk_size", 10000),
+            buffer_gb=self.source_data.get("buffer_gb", None),
             **self.source_data.get("timestamp_kwargs", {}),
         )
         if self.source_data.get("smoothing_kwargs", {}):

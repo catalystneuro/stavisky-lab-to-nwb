@@ -6,7 +6,7 @@ from typing import Union, Optional, List, Tuple, Literal
 from warnings import warn
 
 from spikeinterface.core import BaseSorting, BaseSortingSegment, BaseRecording
-from ...utils.redis import read_entry
+from ...utils.redis import read_entry, buffer_gb_to_entry_count
 from ...utils.timestamps import get_stream_ids_and_timestamps
 
 
@@ -26,7 +26,7 @@ class RedisStreamSortingExtractor(BaseSorting):
         smoothing_kwargs: dict = dict(),
         unit_dim: int = 0,
         clock: Literal["redis", "nsp"] = "nsp",
-        chunk_size: int = 10000,
+        buffer_gb: Optional[float] = None,
     ):
         """Initialize the RedisStreamRecordingExtractor
 
@@ -88,7 +88,7 @@ class RedisStreamSortingExtractor(BaseSorting):
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
             timestamp_field=timestamp_field,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
             **timestamp_kwargs,
         )
         if smoothing_kwargs:
@@ -128,7 +128,7 @@ class RedisStreamSortingExtractor(BaseSorting):
             nsp_timestamps=nsp_timestamps,
             frames_per_entry=frames_per_entry,
             t_start=None,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
         )
         self.add_sorting_segment(sorting_segment)
 
@@ -307,7 +307,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         t_start: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
         unit_dim: int = 0,
-        chunk_size: int = 1000,
+        buffer_gb: Optional[float] = None,
     ):
         """Initialize the RedisStreamRecordingSegment
 
@@ -381,11 +381,12 @@ class RedisStreamSortingSegment(BaseSortingSegment):
 
         # make chunk size an init arg?
         self._spike_frames = None
-        self._load_spike_frames(chunk_size=chunk_size)
+        self._load_spike_frames(buffer_gb=buffer_gb)
 
-    def _load_spike_frames(self, chunk_size: int = 1000):
+    def _load_spike_frames(self, buffer_gb: Optional[float] = None):
         # initialize loop variables
-        stream_entries = self._client.xrange(self._stream_name, count=chunk_size)
+        count = buffer_gb_to_entry_count(client=self._client, stream_name=self._stream_name, buffer_gb=buffer_gb)
+        stream_entries = self._client.xrange(self._stream_name, count=count)
         frame_counter = 0
         spike_frames = []
         spike_labels = []
@@ -407,7 +408,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
                 # update base frame number
                 frame_counter += self._frames_per_entry
             # load next chunk of entries
-            stream_entries = self._client.xrange(self._stream_name, min=b"(" + stream_entries[-1][0], count=chunk_size)
+            stream_entries = self._client.xrange(self._stream_name, min=b"(" + stream_entries[-1][0], count=count)
         # stack all spike frames and labels
         spike_frames = np.concatenate(spike_frames, axis=0)
         spike_labels = np.concatenate(spike_labels, axis=0)

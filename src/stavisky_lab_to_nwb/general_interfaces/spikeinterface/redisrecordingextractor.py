@@ -27,7 +27,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
         smoothing_kwargs: dict = dict(),
         gain_to_uv: Optional[float] = None,
         channel_dim: int = 0,
-        chunk_size: int = 10000,
+        buffer_gb: Optional[float] = None,
     ):
         """Initialize the RedisStreamRecordingExtractor
 
@@ -89,7 +89,7 @@ class RedisStreamRecordingExtractor(BaseRecording):
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
             timestamp_field=timestamp_field,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
             **timestamp_kwargs,
         )
         if smoothing_kwargs:
