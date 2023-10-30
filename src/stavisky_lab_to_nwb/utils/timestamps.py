@@ -16,7 +16,7 @@ def get_stream_ids_and_timestamps(
     timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
     timestamp_index: Optional[int] = None,
     timestamp_shape: Optional[tuple] = None,
-    chunk_size: Optional[int] = None,
+    buffer_gb: Optional[float] = None,
 ):
     """Reads a stream's entry IDs, converts those to timestamps,
     and optionally also reads another timestamp field."""
@@ -44,7 +44,7 @@ def get_stream_ids_and_timestamps(
         stream_name=stream_name,
         field_kwargs=timestamp_kwargs,
         return_ids=True,
-        chunk_size=chunk_size,
+        buffer_gb=buffer_gb,
     )
     # convert entry ids to redis timestamps
     entry_ids = field_data["ids"]

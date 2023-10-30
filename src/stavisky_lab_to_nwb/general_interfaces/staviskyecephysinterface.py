@@ -35,7 +35,7 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
         nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = "int64",
         nsp_timestamp_index: Optional[int] = 0,
         load_timestamps: bool = True,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         super().__init__(
             port=port,
@@ -52,7 +52,7 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
             nsp_timestamp_dtype=nsp_timestamp_dtype,
             nsp_timestamp_index=nsp_timestamp_index,
             load_timestamps=load_timestamps,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
         )
 
     def add_to_nwbfile(
@@ -60,7 +60,6 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
-        chunk_size: Optional[int] = None,
         use_chunk_iterator: bool = False,
         iterator_opts: dict = dict(),
     ):
@@ -74,9 +73,6 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
             Metadata dictionary with information used to create the NWBFile
         stub_test : bool, default: False
             Whether to only partially convert the data or not
-        chunk_size : int, optional
-            The number of Redis entries to read from the stream
-            per iteration
         """
         # Instantiate Redis client and check connection
         r = redis.Redis(
@@ -89,7 +85,6 @@ class StaviskySpikingBandPowerInterface(StaviskyTemporalAlignmentInterface):
         sbp = self.get_data_iterator(
             client=r,
             stub_test=stub_test,
-            chunk_size=chunk_size,
             use_chunk_iterator=use_chunk_iterator,
             iterator_opts=iterator_opts,
         )
@@ -166,7 +161,7 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
         nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = "int64",
         nsp_timestamp_index: Optional[int] = None,
         load_timestamps: bool = True,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         super().__init__(
             port=port,
@@ -183,7 +178,7 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
             nsp_timestamp_dtype=nsp_timestamp_dtype,
             nsp_timestamp_index=nsp_timestamp_index,
             load_timestamps=load_timestamps,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
         )
 
     def add_to_nwbfile(
@@ -191,7 +186,6 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
-        chunk_size: Optional[int] = None,
         use_chunk_iterator: bool = False,
         iterator_opts: dict = dict(),
     ):
@@ -206,7 +200,6 @@ class StaviskyFilteredRecordingInterface(StaviskyTemporalAlignmentInterface):
         filt_ephys = self.get_data_iterator(
             client=r,
             stub_test=stub_test,
-            chunk_size=chunk_size,
             use_chunk_iterator=use_chunk_iterator,
             iterator_opts=iterator_opts,
         )
@@ -285,7 +278,7 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
         nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = "int64",
         nsp_timestamp_index: Optional[int] = 0,
         load_timestamps: bool = True,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         super().__init__(
             port=port,
@@ -302,7 +295,7 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
             nsp_timestamp_dtype=nsp_timestamp_dtype,
             nsp_timestamp_index=nsp_timestamp_index,
             load_timestamps=load_timestamps,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
         )
 
     def add_to_nwbfile(
@@ -310,7 +303,6 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
-        chunk_size: Optional[int] = None,
         use_chunk_iterator: bool = False,
         iterator_opts: dict = dict(),
     ):
@@ -325,7 +317,6 @@ class StaviskySmoothedSpikingBandPowerInterface(StaviskyTemporalAlignmentInterfa
         sbp = self.get_data_iterator(
             client=r,
             stub_test=stub_test,
-            chunk_size=chunk_size,
             use_chunk_iterator=use_chunk_iterator,
             iterator_opts=iterator_opts,
         )
@@ -420,7 +411,7 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
         nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = "int64",
         nsp_timestamp_index: Optional[int] = 0,
         load_timestamps: bool = True,
-        chunk_size: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         super().__init__(
             port=port,
@@ -437,7 +428,7 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
             nsp_timestamp_dtype=nsp_timestamp_dtype,
             nsp_timestamp_index=nsp_timestamp_index,
             load_timestamps=load_timestamps,
-            chunk_size=chunk_size,
+            buffer_gb=buffer_gb,
         )
 
     def add_to_nwbfile(
@@ -445,7 +436,6 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
-        chunk_size: Optional[int] = None,
         use_chunk_iterator: bool = False,
         iterator_opts: dict = dict(),
     ):
@@ -460,7 +450,6 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
         thresh_cross = self.get_data_iterator(
             client=r,
             stub_test=stub_test,
-            chunk_size=chunk_size,
             use_chunk_iterator=use_chunk_iterator,
             iterator_opts=iterator_opts,
         )
