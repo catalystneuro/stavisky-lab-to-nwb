@@ -35,36 +35,44 @@ class MultiTableWidget(widgets.VBox):
             List of DataFrames to display, corresponding to `names`
         """
         assert len(names) == len(tables)
+        seen_names = {}
+        dedup_names = []
+        for name in names:
+            if name not in seen_names:
+                seen_names[name] = 1
+            else:
+                seen_names[name] += 1
+                name = f"{name} ({seen_names[name]})"
+            dedup_names.append(name)
 
         super().__init__()
-        self.names = names
+        self.names = dedup_names
         self.tables = tables
 
-        if len(names) == 0:
+        if len(self.names) == 0:
             self.children = [widgets.HTML("No sessions found")]
             return
-        if len(names) == 1:
+        if len(self.names) == 1:
             self.children = [DataGrid(tables[0])]
             return
 
         self.session_controller = widgets.Dropdown(
-            options=names,
-            value=names[0],
+            options=[(self.names[n], n) for n in range(len(self.names))],
+            value=0,
             description="Session:",
             disabled=False,
         )
 
-        self.children = [self.session_controller, DataGrid(tables[0])]
+        self.children = [self.session_controller, DataGrid(self.tables[0])]
 
         def on_dropdown_update(change):
-            idx = names.index(change.new)
-            self.children[1] = DataGrid(tables[idx])
+            self.children = [self.session_controller, DataGrid(self.tables[change.new])]
 
-        self.session_controller.observe(on_dropdown_update, "value")
+        self.session_controller.observe(on_dropdown_update, names='value')
 
-    def update(self, session: str):
-        idx = self.names.index(session)
-        return DataGrid(self.tables[idx])
+#     def update(self, session: str):
+#         idx = self.names.index(session)
+#         return DataGrid(self.tables[idx])
 
 
 class DecodingErrorWidget(widgets.Tab):
@@ -390,7 +398,7 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
         group_inds=None,
         labels=None,
         interface=None,
-        figsize=(12, 7),
+        figsize=(9, 5.25),
         overlay=True,
         align_line_color=(0.7, 0.7, 0.7),
     ):
@@ -437,10 +445,9 @@ class AlignedAveragedTimeSeriesWidget(widgets.VBox):
             )
 
             ax0.set_title(f"{start_label}")
-            ax0.set_xticks([])
             ax0.set_xlabel("")
-            ax0.set_yticks([])
             if not overlay:
+                ax0.set_yticks([])
                 ax0.set_ylabel("trials")
 
             ax1.set_xlim([start, end])
@@ -541,7 +548,7 @@ def plot_logit_traces(
     time_window=None,
     order=None,
     angle=False,
-    figsize=(8, 6),
+    figsize=(6.7, 5),
     labels=None,
     cmap=None,
     show_legend=True,
