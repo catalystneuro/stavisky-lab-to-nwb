@@ -19,11 +19,11 @@ Recording:
       enforce_causal: True # bool
     gain_to_uv: 0.01 # float, optional
     channel_dim: 1 # int, optional
-    buffer_gb: 0.2 # int, optional
+    buffer_gb: 1.0 # float, optional
     channel_mapping_file: "./braintotext/braintotext_channel_map.json" # string, abs or rel to `src/stavisky_lab_to_nwb`
   conversion_options:
     iterator_opts: # dict, optional
-      buffer_gb: 0.2 # float
+      buffer_gb: 1.0 # float
 
 Sorting:
   # interface: StaviskySortingInterface (`general_interfaces/staviskysortinginterface.py`)
@@ -134,11 +134,11 @@ FilteredRecording:
       timestamp_dtype: "int64" # string
     smoothing_kwargs: {} # dict, optional
     load_timestamps: True # bool, optional
-    buffer_gb: 0.2 # float, optional
+    buffer_gb: 1.0 # float, optional
   conversion_options:
     use_chunk_iterator: True # bool, optional
     iterator_opts: # dict, optional
-      buffer_gb: 0.2 # float
+      buffer_gb: 1.0 # float
 
 SmoothedSpikingBandPower:
   # interface: StaviskySmoothedSpikingBandPowerInterface (`general_interfaces/staviskyecephysinterface.py`)
