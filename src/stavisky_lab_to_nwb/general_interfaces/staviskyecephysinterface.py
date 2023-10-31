@@ -389,7 +389,7 @@ class StaviskySmoothedThreshCrossingInterface(StaviskyTemporalAlignmentInterface
         nsp_timestamp_kwargs: dict = dict(),
         smoothing_kwargs: dict = dict(),
         load_timestamps: bool = True,
-        buffer_gb: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         super().__init__(
             port=port,

@@ -319,7 +319,7 @@ class RedisStreamSortingSegment(BaseSortingSegment):
         t_start: Optional[float] = None,
         sampling_frequency: Optional[float] = None,
         unit_dim: int = 0,
-        buffer_gb: Optional[int] = None,
+        buffer_gb: Optional[float] = None,
     ):
         """Initialize the RedisStreamRecordingSegment
 
