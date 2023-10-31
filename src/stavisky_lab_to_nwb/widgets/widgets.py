@@ -68,7 +68,8 @@ class MultiTableWidget(widgets.VBox):
         def on_dropdown_update(change):
             self.children = [self.session_controller, DataGrid(self.tables[change.new])]
 
-        self.session_controller.observe(on_dropdown_update, names='value')
+        self.session_controller.observe(on_dropdown_update, names="value")
+
 
 #     def update(self, session: str):
 #         idx = self.names.index(session)
