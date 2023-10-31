@@ -113,7 +113,6 @@ https://github.com/catalystneuro/stavisky-lab-to-nwb/assets/64850082/75aa160d-c0
 
 #### Decoder RNN and language model predictions over time
 
-The `DecodingOutputWidget` displays the phoneme probabilities and the words predicted by the decoder RNN and language model at each step. 
+The `DecodingOutputWidget` displays the phoneme probabilities and the words predicted by the decoder RNN and language model at each step.
 
 https://github.com/catalystneuro/stavisky-lab-to-nwb/assets/64850082/acb5d835-2902-4f3f-9741-1dcc1f323324
-
