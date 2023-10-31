@@ -93,3 +93,27 @@ Each conversion is organized in a directory of its own in the `src` directory:
 * `simulated_data_notes.md`: notes and comments concerning this specific conversion.
 
 The directory might contain other files that are necessary for the conversion but those are the central ones.
+
+## Interactive data visualizations
+
+The directory `src/stavisky_lab_to_nwb/widgets/` contains custom widgets for visualizing data in the converted NWB files. To use these widgets, you will need to install the additional packages listed in `src/stavisky_lab_to_nwb/widgets/widgets_requirements.txt`. Example code for using the widgets can be found in the `notebooks/` directory.
+
+### Brain-to-text
+#### Decoding performance across sessions
+
+`DecodingErrorWidget` computes and displays the word error rates (WER) and phoneme error rates (PER) for each session that is provided to it. You can view the performance across sessions in the `Overview` panel and a breakdown of performance per trial in the `Session Results` panel.
+
+https://github.com/catalystneuro/stavisky-lab-to-nwb/assets/64850082/93d11cc8-7280-4bf7-86aa-302ea3b2af11
+
+#### Trial alignment for processed electrophysiology data
+
+While `nwbwidgets` supports trial alignment and averaging for spiking data, it does not for generic TimeSeries, so the `AlignedAveragedTimeSeriesWidget` offers this functionality, likely most useful for the various processed electrophysiology data computed during the experiment.
+
+https://github.com/catalystneuro/stavisky-lab-to-nwb/assets/64850082/75aa160d-c054-4acd-a99e-2424c5e41792
+
+#### Decoder RNN and language model predictions over time
+
+The `DecodingOutputWidget` displays the phoneme probabilities and the words predicted by the decoder RNN and language model at each step. 
+
+https://github.com/catalystneuro/stavisky-lab-to-nwb/assets/64850082/acb5d835-2902-4f3f-9741-1dcc1f323324
+
