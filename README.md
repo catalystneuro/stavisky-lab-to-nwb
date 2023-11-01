@@ -102,3 +102,28 @@ User configuration of the conversions primarily involves editing/creating YAML f
 Each data interface is defined in `braintotextnwbconverter.py`, where `BrainToTextNWBConverter.data_interface_classes` specifies the class for each interface. Each top-level entry in `braintotext_conversion.yml` corresponds to one of these interfaces, with sub-dictionaries `source_data` for instantiating the class and `conversion_options` for configuring how it converts the data. For each interface, you can find more documentation on the accepted kwargs in their respective files, specifically their `__init__` functions for `source_data` and their `add_to_nwbfile` functions for `conversion_options`.
 
 To change the configuration for `session_to_nwb`, you can modify `braintotext_conversion.yml`, create a new YAML file and point to it with the `conversion_config_path` argument, or override specific kwargs programmatically with the `source_data` and `conversion_options` arguments. To remove certain data interfaces from the conversion, you can again modify/create YAML files to comment out or remove particular interfaces, or you can use the `exclude_interfaces` argument. Note that you do not need to edit `braintotextnwbconverter.py`, since interfaces will simply not be instantiated if no source data is provided for them ,even if they are still in `BrainToTextNWBConverter.data_interface_classes`. In general, we recommend using YAML files to modify the conversion.
+
+
+
+## Interactive data visualizations
+
+The directory `src/stavisky_lab_to_nwb/widgets/` contains custom widgets for visualizing data in the converted NWB files. To use these widgets, you will need to install the additional packages listed in `src/stavisky_lab_to_nwb/widgets/widgets_requirements.txt`. Example code for using the widgets can be found in the `notebooks/` directory.
+
+### Brain-to-text
+#### Decoding performance across sessions
+
+`DecodingErrorWidget` computes and displays the word error rates (WER) and phoneme error rates (PER) for each session that is provided to it. You can view the performance across sessions in the `Overview` panel and a breakdown of performance per trial in the `Session Results` panel.
+
+https://github.com/catalystneuro/stavisky-lab-to-nwb/assets/64850082/99bd8848-88be-4012-b2e7-b450f67e485d
+
+#### Trial alignment for processed electrophysiology data
+
+While `nwbwidgets` supports trial alignment and averaging for spiking data, it does not for generic TimeSeries, so the `AlignedAveragedTimeSeriesWidget` offers this functionality, likely most useful for the various processed electrophysiology data computed during the experiment.
+
+https://github.com/catalystneuro/stavisky-lab-to-nwb/assets/64850082/75aa160d-c054-4acd-a99e-2424c5e41792
+
+#### Decoder RNN and language model predictions over time
+
+The `DecodingOutputWidget` displays the predictions of the decoder RNN and language model at each timestep. The lower plot shows the predicted phoneme probabilities of the RNN after a softmax activation, with labels for the highest-probability phoneme at a given timestep. The upper plot shows the words predicted by the language model based on the phoneme probabilities. The words with strikethroughs were discarded from the final prediction, while words without strikethroughs were kept to form the full predicted sentence.
+
+https://github.com/catalystneuro/stavisky-lab-to-nwb/assets/64850082/acb5d835-2902-4f3f-9741-1dcc1f323324
