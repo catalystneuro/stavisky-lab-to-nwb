@@ -9,7 +9,7 @@ from hdmf.backends.hdf5 import H5DataIO
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.tools.nwb_helpers import get_module
 
-from stavisky_lab_to_nwb.utils.redis import read_entry, buffer_gb_to_entry_count
+from ..utils.redis_io import read_entry, buffer_gb_to_entry_count
 
 
 class BrainToTextPhonemeLogitsInterface(BaseDataInterface):
@@ -133,7 +133,7 @@ class BrainToTextDecodedTextInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        buffer_gb: Optiona[float] = None,
+        buffer_gb: Optional[float] = None,
     ):
         # initialize redis client and check connection
         r = redis.Redis(

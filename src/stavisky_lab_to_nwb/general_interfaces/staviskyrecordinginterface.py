@@ -2,10 +2,12 @@
 import redis
 import json
 import numpy as np
+from pathlib import Path
 from pynwb.file import NWBFile
 from typing import Union, Optional, List, Tuple, Literal
 
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
+from neuroconv.utils.types import FilePathType
 
 from .spikeinterface import RedisStreamRecordingExtractor
 from ..utils.timestamps import get_stream_ids_and_timestamps, smooth_timestamps
@@ -28,15 +30,84 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
         channel_ids: Optional[list] = None,
         frames_per_entry: int = 30,
         sampling_frequency: Optional[float] = 3e4,
-        timestamp_field: Optional[str] = None,
-        timestamp_kwargs: dict = dict(),
+        nsp_timestamp_field: Optional[str] = None,
+        nsp_timestamp_kwargs: dict = dict(),
         smoothing_kwargs: dict = dict(window_len="max", enforce_causal=True),
         gain_to_uv: Optional[float] = 1e-2,
         channel_dim: int = 1,
         buffer_gb: Optional[float] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
+        channel_mapping_file: Optional[FilePathType] = None,
     ):
+        """Initialize the StaviskyRecordingInterface
+
+        Parameters
+        ----------
+        port : int
+            Port number for Redis server.
+        host : str
+            Host name for Redis server, e.g. "localhost".
+        stream_name : str
+            Name of stream containing the recording data.
+        data_field : bytes or str
+            Key or field within each Redis stream entry that
+            contains the recording data.
+        data_dtype : str, type, or numpy.dtype
+            The dtype of the data. Assumed to be a numeric type
+            recognized by numpy, e.g. int8, float32, etc.
+        channel_ids : list, optional
+            List of ids for each channel. If not provided, the channel
+            indices are used as ids.
+        frames_per_entry : int, default: 1
+            Number of frames (i.e. single time points/samples) contained
+            within each Redis stream entry.
+        sampling_frequency : float, optional
+            The sampling frequency of the data in Hz. If not provided,
+            it is inferred from the timestamps.
+        nsp_timestamp_field : bytes or str, optional
+            The field name of additional timestamps in the Redis
+            stream entries. Redis timestamps will always be loaded
+            and saved, but if `nsp_timestamp_field` is provided,
+            the additional timestamps can be saved as well.
+        nsp_timestamp_kwargs : dict, default: {}
+            Necessary kwargs for reading the additional timestamps.
+            See `get_stream_ids_and_timestamps()`.
+        smoothing_kwargs : dict, default: {}
+            Parameters for `utils.timestamps.smooth_timestamps()`.
+            Timestamp smoothing is currently only applied to the Redis
+            timestamps
+        gain_to_uv : float, optional
+            Scaling necessary to convert the recording values to
+            microvolts.
+        channel_dim : int, default: 0
+            If frames_per_entry > 1, then channel_dim indicates the
+            axis ordering of the data in each entry. If channel_dim
+            = 0, then the data are assumed to originally be of shape
+            (channel_count, frames_per_entry). If channel_dim = 1,
+            then the data are assumed to originally be of shape
+            (frames_per_entry, channel_count)
+        buffer_gb : float, optional
+            The amount of data to read simultaneously when
+            iterating through the Redis stream, in gb. If `None`, the
+            entire stream will be read from Redis at once
+        verbose : bool, default: True
+            If True, will print out additional information.
+        es_key : str, default: "ElectricalSeries"
+            The key of this ElectricalSeries when saved to NWB
+        channel_mapping_file: Path or str, optional
+            Path to JSON file specifying channel mapping to unscramble
+            continuous data channels. Provided path can be either
+            absolute, or relative to `src/stavisky_lab_to_nwb/`
+        """
+        if channel_mapping_file is not None:
+            channel_mapping_file = Path(channel_mapping_file)
+            if not channel_mapping_file.is_absolute():
+                channel_mapping_file = Path(__file__).parent.parent / channel_mapping_file
+            with open(channel_mapping_file) as f:
+                channel_mapping = (np.asarray(json.load(f)["electrode_mapping"], dtype=int) - 1).tolist()
+        else:
+            channel_mapping = None
         super().__init__(
             verbose=verbose,
             es_key=es_key,
@@ -48,12 +119,13 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
             channel_ids=channel_ids,
             frames_per_entry=frames_per_entry,
             sampling_frequency=sampling_frequency,
-            timestamp_field=timestamp_field,
-            timestamp_kwargs=timestamp_kwargs,
+            nsp_timestamp_field=nsp_timestamp_field,
+            nsp_timestamp_kwargs=nsp_timestamp_kwargs,
             smoothing_kwargs=smoothing_kwargs,
             gain_to_uv=gain_to_uv,
             channel_dim=channel_dim,
             buffer_gb=buffer_gb,
+            channel_mapping=channel_mapping,
         )
 
         # connect to Redis
@@ -185,3 +257,31 @@ class StaviskyRecordingInterface(BaseRecordingExtractorInterface, DualTimestampT
 
     def get_entry_ids(self):
         return self.recording_extractor.get_entry_ids()
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: Optional[dict] = None,
+        stub_test: bool = False,
+        starting_time: Optional[float] = None,
+        write_as: Literal["raw", "lfp", "processed"] = "raw",
+        write_electrical_series: bool = True,
+        compression: Optional[str] = "gzip",
+        compression_opts: Optional[int] = None,
+        iterator_type: str = "v2",
+        iterator_opts: Optional[dict] = None,
+    ):
+        if iterator_type == "v2" and "buffer_gb" not in iterator_opts:
+            iterator_opts["buffer_gb"] = self.source_data.get("buffer_gb", None)
+        super().add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            stub_test=stub_test,
+            starting_time=starting_time,
+            write_as=write_as,
+            write_electrical_series=write_electrical_series,
+            compression=compression,
+            compression_opts=compression_opts,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
+        )

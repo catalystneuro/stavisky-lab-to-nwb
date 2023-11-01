@@ -3,7 +3,7 @@ import redis
 import numpy as np
 from typing import Union, Literal, Optional
 
-from .redis import safe_decode, read_stream_fields
+from .redis_io import safe_decode, read_stream_fields
 
 
 def get_stream_ids_and_timestamps(

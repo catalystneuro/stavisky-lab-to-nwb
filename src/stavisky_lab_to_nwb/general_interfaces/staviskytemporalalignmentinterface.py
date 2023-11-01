@@ -9,8 +9,8 @@ from abc import abstractmethod
 
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 
-from stavisky_lab_to_nwb.utils.redis import read_stream_fields, RedisDataChunkIterator
-from stavisky_lab_to_nwb.utils.timestamps import get_stream_ids_and_timestamps, smooth_timestamps
+from ..utils.redis_io import read_stream_fields, RedisDataChunkIterator
+from ..utils.timestamps import get_stream_ids_and_timestamps, smooth_timestamps
 
 
 class DualTimestampTemporalAlignmentInterface(BaseTemporalAlignmentInterface):
@@ -61,8 +61,6 @@ class DualTimestampTemporalAlignmentInterface(BaseTemporalAlignmentInterface):
 class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface):
     """Base class for interfaces to write data to NWB with two different time bases"""
 
-    default_data_kwargs: dict = dict()
-
     def __init__(
         self,
         port: int,
@@ -74,11 +72,8 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         data_dtype: Optional[str] = None,
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = None,
-        nsp_timestamp_conversion: Optional[float] = None,
-        nsp_timestamp_encoding: Optional[str] = None,
-        nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
-        nsp_timestamp_index: Optional[int] = None,
-        smoothing_kwargs: dict = {},
+        nsp_timestamp_kwargs: dict = dict(),
+        smoothing_kwargs: dict = dict(),
         load_timestamps: bool = True,
         buffer_gb: Optional[float] = None,
     ):
@@ -92,48 +87,60 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             Host name for Redis server, e.g. "localhost"
         stream_name : str
             Name of stream containing the spiking band power data
-        data_key : str
+        data_field : str
             Key or field within each Redis stream entry that
             contains the spiking band power data
         ts_key : str
             Name of the timeseries to be saved to NWB file
-        data_kwargs : dict
-            Read kwargs for the data
         frames_per_entry : int, default: 1
             Number of separate timesteps included in each entry,
             default 1
+        data_dtype : str, type, or numpy.dtype
+            The dtype of the data, see
+            `utils.redis_io.read_entry()`.
+        data_kwargs : dict
+            Additional kwargs for reading the data, see
+            `utils.redis_io.read_entry()`. If `data_dtype` is
+            provided also, that will be used to
+            override the `"dtype"` entry in `data_kwargs`
         nsp_timestamp_field : str, optional
-            The source of the nsp timestamp information in the Redis stream.
-            See `get_original_timestamps()`
-        nsp_timestamp_conversion : float, default: 1
-            Conversion factor needed to scale the timestamps to seconds.
-            See `get_original_timestamps()`
-        nsp_timestamp_encoding : {"string", "buffer"}, optional
-            How timestamps are encoded in Redis entry data. See
-            `get_original_timestamps()`
-        nsp_timestamp_dtype : str, type, or numpy.dtype, optional
-            The data type of the timestamps in Redis. See
-            `get_original_timestamps()`
-        nsp_timestamp_index : int, optional
-            Index of timestamp in timestamp arrays. See `get_original_timestamps()`
+            The source of the nsp timestamp information in the Redis stream. By
+            default, Redis timestamps are always read. If `nsp_timestamp_field`
+            is specified, the timestamp source is assumed to be a data
+            field present in each entry and is saved as `_nsp_timestamps`
+        nsp_timestamp_kwargs : dict, default: {}
+            Necessary kwargs for reading the additional timestamps.
+            See `get_stream_ids_and_timestamps()`.
+        smoothing_kwargs : dict, default: {}
+            Parameters for `utils.timestamps.smooth_timestamps()`.
+            Timestamp smoothing is currently only applied to the Redis
+            timestamps
+        load_timestamps : bool, default: True
+            Whether to load the timestamps for the interface or not.
+            If `False`, the timestamps must be provided some other way,
+            for example by using `set_timestamps_from_interface()`
+            with another interface loading data from the same Redis
+            stream
+        buffer_gb : float, optional
+            The amount of data to read simultaneously when
+            iterating through the Redis stream, in gb. If `None`, the
+            entire stream will be read from Redis at once
         """
         super().__init__(port=port, host=host, stream_name=stream_name, data_field=data_field)
         self.ts_key = ts_key
-        self.data_kwargs = self.default_data_kwargs.copy()
-        if "shape" not in self.data_kwargs:
-            self.data_kwargs["shape"] = (frames_per_entry, -1)  # doesn't handle transposed data!
+        if "shape" not in data_kwargs:
+            data_kwargs["shape"] = (frames_per_entry, -1)  # doesn't handle transposed data!
+        if "encoding" not in data_kwargs:
+            data_kwargs["encoding"] = "buffer"  # default is force buffer encoding
         if data_dtype is not None:
             data_kwargs["dtype"] = data_dtype
-        self.data_kwargs.update(data_kwargs)
+        self.data_kwargs = data_kwargs
         self.buffer_gb = buffer_gb
         if load_timestamps:
             self._entry_ids, self._timestamps, self._nsp_timestamps = self.get_original_timestamps(
                 frames_per_entry=frames_per_entry,
                 nsp_timestamp_field=nsp_timestamp_field,
-                nsp_timestamp_conversion=nsp_timestamp_conversion,
-                nsp_timestamp_encoding=nsp_timestamp_encoding,
-                nsp_timestamp_dtype=nsp_timestamp_dtype,
-                nsp_timestamp_index=nsp_timestamp_index,
+                nsp_timestamp_kwargs=nsp_timestamp_kwargs,
                 smoothing_kwargs=smoothing_kwargs,
             )
         else:
@@ -145,39 +152,36 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         self,
         frames_per_entry: int = 1,
         nsp_timestamp_field: Optional[str] = None,
-        nsp_timestamp_encoding: Optional[str] = None,
-        nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = None,
-        nsp_timestamp_conversion: Optional[float] = None,
-        nsp_timestamp_index: Optional[int] = None,
-        smoothing_kwargs: dict = {},
+        nsp_timestamp_kwargs: dict = dict(),
+        smoothing_kwargs: dict = dict(),
     ):
         """Get original timestamps for this data stream
 
         Parameters
         ----------
+        frames_per_entry : int, default: 1
+            Number of separate timesteps included in each entry,
+            default 1
         nsp_timestamp_source : bytes or str, optional
-            The source of the timestamp information in the Redis stream. By
-            default, Redis timestamps are always read. If specified,
-            the timestamp source is assumed to be a data key present
-            in each entry and is saved as `_alt_timestamps`
-        nsp_timestamp_conversion : float, default: 1
-            If `nsp_timestamp_source` is a Redis entry data key, then the user should
-            provide the conversion factor needed to scale the timestamps to seconds
-        nsp_timestamp_encoding : {"string", "buffer"}, optional
-            If `nsp_timestamp_source` is a Redis entry data key, then how the
-            timestamp is stored must be specified. If the encoding is "string",
-            then the timestamp is treated as a human-readable string of some
-            numeric type. If the encoding is "buffer", then the timestamp is
-            treated as a raw byte buffer of some numeric type
-        nsp_timestamp_dtype : str, type, or numpy.dtype, optional
-            If `nsp_timestamp_source` is a Redis entry data key, then the data
-            type of the timestamp must be specified. The provided data type
-            is assumed to be a numeric type recognized by numpy, e.g. int8,
-            float, float32, etc.
-        nsp_timestamp_index : int, optional
-            If the timestamp field to read from has multiple values
-            for each entry, then this field is used to index
-            into that array
+            The source of the timestamp information in the Redis stream
+        nsp_timestamp_kwargs : dict, default: {}
+            Necessary kwargs for reading the additional timestamps.
+            See `get_stream_ids_and_timestamps()`
+        smoothing_kwargs : dict, default: {}
+            Parameters for `utils.timestamps.smooth_timestamps()`.
+            Timestamp smoothing is currently only applied to the Redis
+            timestamps
+
+        Returns
+        -------
+        entry_ids : list
+            List of entry IDs for each Redis stream entry
+        redis_timestamps : np.ndarray
+            Array of Redis timestamps extracted from entry IDs
+            and possibly smoothed
+        nsp_timestamps : np.ndarray or None
+            If specified, an array of alternate timestamps
+            extracted from the data stream
         """
         # Instantiate Redis client and check connection
         r = redis.Redis(
@@ -192,11 +196,8 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
             stream_name=self.source_data["stream_name"],
             frames_per_entry=frames_per_entry,
             timestamp_field=nsp_timestamp_field,
-            timestamp_conversion=nsp_timestamp_conversion,
-            timestamp_encoding=nsp_timestamp_encoding,
-            timestamp_dtype=nsp_timestamp_dtype,
-            timestamp_index=nsp_timestamp_index,
             buffer_gb=self.buffer_gb,
+            **nsp_timestamp_kwargs,
         )
         if smoothing_kwargs:
             redis_timestamps = smooth_timestamps(
@@ -244,8 +245,26 @@ class StaviskyTemporalAlignmentInterface(DualTimestampTemporalAlignmentInterface
         client: redis.Redis,
         stub_test: bool = False,
         use_chunk_iterator: bool = False,
-        iterator_opts: dict = {},
+        iterator_opts: dict = dict(),
     ):
+        """Extract data from stream as an
+        array or data chunk iterator
+
+        Parameters
+        ----------
+        client : redis.Redis
+            Redis client connected to server
+        stub_test : bool, default: False
+            Whether to load only a portion of the data,
+            for faster iteration during testing
+        use_chunk_iterator : bool, default: False
+            Whether to use `RedisDataChunkIterator` instead of
+            just an array. If False, the entire stream's data
+            will have to be loaded into Python before writing, which
+            may be problematic for extremely large streams
+        iterator_opts : dict, default: {}
+            Additional options for the data chunk iterator
+        """
         # Instantiate Redis client and check connection
         stream_name = self.source_data["stream_name"]
         data_field = self.source_data["data_field"]

@@ -1,8 +1,11 @@
 """Primary NWBConverter class for this dataset."""
-from neuroconv import NWBConverter
+import inspect
+from pathlib import Path
 from pynwb import NWBFile
-from typing import Optional
+from typing import Optional, Union
 
+from neuroconv import NWBConverter
+from neuroconv.utils import load_dict_from_file, dict_deep_update
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 
 from stavisky_lab_to_nwb.general_interfaces import (
@@ -36,20 +39,41 @@ class BrainToTextNWBConverter(NWBConverter):
         SpikingBandPower10ms=StaviskySpikingBandPowerInterface,
         SpikingBandPower20ms=StaviskySpikingBandPowerInterface,
         FilteredRecording=StaviskyFilteredRecordingInterface,
-        SmoothedSBP10ms=StaviskySmoothedSpikingBandPowerInterface,
-        SmoothedTC10ms=StaviskySmoothedThreshCrossingInterface,
-        SmoothedSBP20ms=StaviskySmoothedSpikingBandPowerInterface,
-        SmoothedTC20ms=StaviskySmoothedThreshCrossingInterface,
+        SmoothedSpikingBandPower=StaviskySmoothedSpikingBandPowerInterface,
+        SmoothedThreshCrossing=StaviskySmoothedThreshCrossingInterface,
     )
 
     def __init__(
         self,
+        conversion_config_path: Union[str, Path],
+        port: int,
+        host: str,
         source_data: dict,
         verbose: bool = True,
         session_start_time: float = 0.0,
+        exclude_interfaces: list[str] = [],
         reuse_timestamps: bool = True,
     ):
         self.verbose = verbose
+        default_config = load_dict_from_file(conversion_config_path)
+        default_source_data = {
+            interface_name: default_config[interface_name].get("source_data", {})
+            for interface_name in default_config.keys()
+            if interface_name not in exclude_interfaces
+        }
+        default_conversion_options = {
+            interface_name: default_config[interface_name].get("conversion_options", {})
+            for interface_name in default_config.keys()
+            if interface_name not in exclude_interfaces
+        }
+        for name, data_interface in self.data_interface_classes.items():
+            if name not in default_source_data:
+                continue
+            if "port" in inspect.signature(data_interface).parameters.keys():
+                if "port" not in default_source_data[name]:
+                    default_source_data[name]["port"] = port
+                    default_source_data[name]["host"] = host
+        source_data = dict_deep_update(default_source_data, source_data)
         self._validate_source_data(source_data=source_data, verbose=self.verbose)
         self.session_start_time = session_start_time
         self.data_interface_objects = {}
@@ -57,23 +81,47 @@ class BrainToTextNWBConverter(NWBConverter):
         for name, data_interface in self.data_interface_classes.items():
             if name not in source_data:
                 continue
+            interface_source_data = source_data[name]
             if reuse_timestamps and issubclass(data_interface, StaviskyTemporalAlignmentInterface):
-                stream_name = source_data[name].get("stream_name", None)
+                stream_name = interface_source_data.get("stream_name", None)
                 if (stream_name is not None) and (stream_name in timestamp_source_interfaces):
                     print(
                         f"Skipping loading timestamps for {name}, taking timestamps from "
                         f"{timestamp_source_interfaces[stream_name]} instead"
                     )
                     source_data["load_timestamps"] = False
-                    self.data_interface_objects[name] = data_interface(**source_data[name])
+                    self.data_interface_objects[name] = data_interface(**interface_source_data)
                     self.data_interface_objects[name].set_timestamps_from_interface(
                         interface=self.data_interface_objects[timestamp_source_interfaces[stream_name]],
                     )
                 else:
-                    self.data_interface_objects[name] = data_interface(**source_data[name])
+                    self.data_interface_objects[name] = data_interface(**interface_source_data)
                     timestamp_source_interfaces[stream_name] = name
             else:
-                self.data_interface_objects[name] = data_interface(**source_data[name])
+                self.data_interface_objects[name] = data_interface(**interface_source_data)
+        self.default_conversion_options = default_conversion_options
+
+    def run_conversion(
+        self,
+        nwbfile_path: Optional[str] = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
+        overwrite: bool = False,
+        stub_test: bool = False,
+        conversion_options: Optional[dict] = None,
+    ) -> None:
+        conversion_options = dict_deep_update(self.default_conversion_options, conversion_options)
+        for name, data_interface in self.data_interface_objects.items():
+            if "stub_test" in inspect.signature(data_interface.add_to_nwbfile).parameters.keys():
+                if "stub_test" not in conversion_options[name]:
+                    conversion_options[name]["stub_test"] = stub_test
+        super().run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+            conversion_options=conversion_options,
+        )
 
     def temporally_align_data_interfaces(self):
         # initialize common clock variables

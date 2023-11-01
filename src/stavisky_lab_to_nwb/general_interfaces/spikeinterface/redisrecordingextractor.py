@@ -5,7 +5,7 @@ from typing import Union, Optional, Literal
 
 from spikeinterface.core import BaseRecording, BaseRecordingSegment
 
-from ...utils.redis import read_entry
+from ...utils.redis_io import read_entry
 from ...utils.timestamps import get_stream_ids_and_timestamps, smooth_timestamps
 
 
@@ -22,55 +22,65 @@ class RedisStreamRecordingExtractor(BaseRecording):
         channel_ids: Optional[list] = None,
         frames_per_entry: int = 1,
         sampling_frequency: Optional[float] = None,
-        timestamp_field: Optional[str] = None,
-        timestamp_kwargs: dict = dict(),
+        nsp_timestamp_field: Optional[str] = None,
+        nsp_timestamp_kwargs: dict = dict(),
         smoothing_kwargs: dict = dict(),
         gain_to_uv: Optional[float] = None,
         channel_dim: int = 0,
         buffer_gb: Optional[float] = None,
+        channel_mapping: Optional[list] = None,
     ):
         """Initialize the RedisStreamRecordingExtractor
 
         Parameters
         ----------
         port : int
-            Port number for Redis server
+            Port number for Redis server.
         host : str
-            Host name for Redis server, e.g. "localhost"
+            Host name for Redis server, e.g. "localhost".
         stream_name : str
-            Name of stream containing the recording data
-        data_key : bytes or str
+            Name of stream containing the recording data.
+        data_field : bytes or str
             Key or field within each Redis stream entry that
-            contains the recording data
+            contains the recording data.
         data_dtype : str, type, or numpy.dtype
             The dtype of the data. Assumed to be a numeric type
             recognized by numpy, e.g. int8, float32, etc.
         channel_ids : list, optional
-            List of ids for each channel
+            List of ids for each channel. If not provided, the channel
+            indices are used as ids.
         frames_per_entry : int, default: 1
-            Number of frames (i.e. a single time point) contained
-            within each Redis stream entry
+            Number of frames (i.e. single time points/samples) contained
+            within each Redis stream entry.
         sampling_frequency : float, optional
-            The sampling frequency of the data in Hz. See
-            `RedisExtractorMixin`
-        timestamp_source : bytes or str, optional
-            The source of the timestamp information in the Redis
-            stream. See `RedisExtractorMixin`
-        timestamp_kwargs : dict, default: {}
-            If timestamp source is not "redis", then timestamp_kwargs
-            must contain the conversion factor, dtype, and encoding of
-            the timestamp data, and optionally smoothing parameters. See
-            `RedisExtractorMixin.get_ids_and_timestamps()`
+            The sampling frequency of the data in Hz. If not provided,
+            it is inferred from the timestamps.
+        nsp_timestamp_field : bytes or str, optional
+            The field name of additional timestamps in the Redis
+            stream entries. Redis timestamps will always be loaded
+            and saved, but if `nsp_timestamp_field` is provided,
+            the additional timestamps can be saved as well.
+        nsp_timestamp_kwargs : dict, default: {}
+            Necessary kwargs for reading the additional timestamps.
+            See `get_stream_ids_and_timestamps()`.
+        smoothing_kwargs : dict, default: {}
+            Parameters for `utils.timestamps.smooth_timestamps()`.
+            Timestamp smoothing is currently only applied to the Redis
+            timestamps
         gain_to_uv : float, optional
             Scaling necessary to convert the recording values to
-            microvolts
+            microvolts.
         channel_dim : int, default: 0
             If frames_per_entry > 1, then channel_dim indicates the
             axis ordering of the data in each entry. If channel_dim
-            = 0, then the data is assumed to originally be of shape
+            = 0, then the data are assumed to originally be of shape
             (channel_count, frames_per_entry). If channel_dim = 1,
-            then the data is assumed to originally be of shape
+            then the data are assumed to originally be of shape
             (frames_per_entry, channel_count)
+        buffer_gb : float, optional
+            The amount of data to read simultaneously when
+            iterating through the Redis stream, in gb. If `None`, the
+            entire stream will be read from Redis at once
         """
         # Instantiate Redis client and check connection
         self._client = redis.Redis(
@@ -88,9 +98,9 @@ class RedisStreamRecordingExtractor(BaseRecording):
             client=self._client,
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
-            timestamp_field=timestamp_field,
+            timestamp_field=nsp_timestamp_field,
             buffer_gb=buffer_gb,
-            **timestamp_kwargs,
+            **nsp_timestamp_kwargs,
         )
         if smoothing_kwargs:
             timestamps = smooth_timestamps(
@@ -123,11 +133,13 @@ class RedisStreamRecordingExtractor(BaseRecording):
             data_field=data_field,
             data_dtype=data_dtype,
             data_kwargs=data_kwargs,
+            channel_count=channel_count,
             timestamps=timestamps,
             entry_ids=entry_ids,
             nsp_timestamps=nsp_timestamps,
             frames_per_entry=frames_per_entry,
             t_start=None,
+            channel_mapping=channel_mapping,
         )
         self.add_recording_segment(recording_segment)
 
@@ -182,11 +194,13 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         data_field: Union[bytes, str],
         data_dtype: Union[str, type, np.dtype],
         data_kwargs: dict,
+        channel_count: int,
         timestamps: np.ndarray,
         entry_ids: list[bytes],
         nsp_timestamps: Optional[np.ndarray] = None,
         frames_per_entry: int = 1,
         t_start: Optional[float] = None,
+        channel_mapping: Optional[list] = None,
     ):
         """Initialize the RedisStreamRecordingSegment
 
@@ -202,6 +216,9 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         data_dtype : str, type, or numpy.dtype
             The dtype of the data. Assumed to be a numeric type
             recognized by numpy, e.g. int8, float32, etc.
+        data_kwargs : dict, default: {}
+            Additional kwargs to pass to `utils.redis_io.read_entry()`
+            to read stream entry data
         channel_count : int
             Number of recording channels
         timestamps : numpy.ndarray
@@ -209,19 +226,15 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
         entry_ids :  list of bytes
             A list containing the entry ID for each entry in the Redis
             stream in order
+        nsp_timestamps : numpy.ndarray, optional
+            An array containing NSP timestamps for each frame, if
+            available
         frames_per_entry : int, default: 1
             Number of frames (i.e. a single time point) contained
             within each Redis stream entry
         t_start : float, optional
             The start time of the segment, relative to the recording
             start time
-        channel_dim : int, default: 0
-            If frames_per_entry > 1, then channel_dim indicates the
-            axis ordering of the data in each entry. If channel_dim
-            = 0, then the data is assumed to originally be of shape
-            (channel_count, frames_per_entry). If channel_dim = 1,
-            then the data is assumed to originally be of shape
-            (frames_per_entry, channel_count)
         """
         # initialize base class
         BaseRecordingSegment.__init__(self, time_vector=timestamps, t_start=t_start)
@@ -232,8 +245,11 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
 
         # arg checks
         assert len(entry_ids) == self._client.xlen(stream_name)
+        if channel_mapping is not None:
+            assert len(channel_mapping) == channel_count
 
         # save some variables
+        self._channel_mapping = channel_mapping
         self._nsp_timestamps = nsp_timestamps
         self._stream_name = stream_name
         self._data_field = data_field
@@ -304,6 +320,8 @@ class RedisStreamRecordingSegment(BaseRecordingSegment):
             ],
             axis=0,
         )
+        if self._channel_mapping is not None:
+            traces = traces[:, self._channel_mapping]
 
         # slicing operations
         if channel_indices is not None:
