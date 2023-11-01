@@ -114,7 +114,7 @@ The directory `src/stavisky_lab_to_nwb/widgets/` contains custom widgets for vis
 
 `DecodingErrorWidget` computes and displays the word error rates (WER) and phoneme error rates (PER) for each session that is provided to it. You can view the performance across sessions in the `Overview` panel and a breakdown of performance per trial in the `Session Results` panel.
 
-https://github.com/catalystneuro/stavisky-lab-to-nwb/assets/64850082/93d11cc8-7280-4bf7-86aa-302ea3b2af11
+https://github.com/catalystneuro/stavisky-lab-to-nwb/assets/64850082/99bd8848-88be-4012-b2e7-b450f67e485d
 
 #### Trial alignment for processed electrophysiology data
 
