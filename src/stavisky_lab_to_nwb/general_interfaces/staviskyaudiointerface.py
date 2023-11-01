@@ -23,10 +23,7 @@ class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
         data_dtype: Optional[str] = None,
         data_kwargs: dict = dict(),
         nsp_timestamp_field: Optional[str] = "timestamps",
-        nsp_timestamp_conversion: Optional[float] = 1.0e-9,
-        nsp_timestamp_encoding: Optional[str] = "buffer",
-        nsp_timestamp_dtype: Optional[Union[str, type, np.dtype]] = "int64",
-        nsp_timestamp_index: Optional[int] = None,
+        nsp_timestamp_kwargs: dict = dict(),
         smoothing_kwargs: dict = dict(window_len="max", sampling_frequency=3.0e4),
         load_timestamps: bool = True,
         buffer_gb: Optional[float] = None,
@@ -40,10 +37,7 @@ class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
             data_dtype=data_dtype,
             frames_per_entry=frames_per_entry,
             nsp_timestamp_field=nsp_timestamp_field,
-            nsp_timestamp_conversion=nsp_timestamp_conversion,
-            nsp_timestamp_encoding=nsp_timestamp_encoding,
-            nsp_timestamp_dtype=nsp_timestamp_dtype,
-            nsp_timestamp_index=nsp_timestamp_index,
+            nsp_timestamp_kwargs=nsp_timestamp_kwargs,
             smoothing_kwargs=smoothing_kwargs,
             load_timestamps=load_timestamps,
             buffer_gb=buffer_gb,
@@ -54,7 +48,8 @@ class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
-        iterator_opts: dict = {},
+        use_chunk_iterator: bool = False,
+        iterator_opts: dict = dict(),
     ):
         # Instantiate Redis client and check connection
         r = redis.Redis(
@@ -74,10 +69,12 @@ class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
         )
         single_value_columns = np.array([(len(np.unique(analog[:, i])) == 1) for i in range(analog.shape[-1])])
         if np.any(single_value_columns):
-            print(f"Dropping columns {np.nonzero(single_value_columns)[0]} as they have only one unique value")
+            print(
+                f"StaviskyAudioInterface: Dropping columns {np.nonzero(single_value_columns)[0]} as they have only one unique value"
+            )
             analog = analog[:, ~single_value_columns]
             if analog.shape[-1] == 0:
-                print(f"All data dropped. Skipping this data stream...")
+                print(f"StaviskyAudioInterface: All data dropped. Skipping this data stream...")
                 return
 
         # stub timestamps if necessary
@@ -91,7 +88,7 @@ class StaviskyAudioInterface(StaviskyTemporalAlignmentInterface):
         try:  # shouldn't fail but just in case
             params = data["nodes"]["cerebusAdapter_mic"]["parameters"]
         except Exception as e:
-            print(f"Unable to extract filtering info: {e}")
+            print(f"StaviskyAudioInterface: Unable to extract filtering info: {e}")
             params = {}
         sampling_freq = params.get("samp_freq", [None])[0]
         if sampling_freq is not None:

@@ -6,7 +6,7 @@ from typing import Union, Optional, List, Tuple, Literal
 from warnings import warn
 
 from spikeinterface.core import BaseSorting, BaseSortingSegment, BaseRecording
-from ...utils.redis import read_entry, buffer_gb_to_entry_count
+from ...utils.redis_io import read_entry, buffer_gb_to_entry_count
 from ...utils.timestamps import get_stream_ids_and_timestamps
 
 
@@ -21,11 +21,11 @@ class RedisStreamSortingExtractor(BaseSorting):
         unit_ids: Optional[list] = None,
         frames_per_entry: int = 1,
         sampling_frequency: Optional[float] = None,
-        timestamp_field: Optional[str] = None,
-        timestamp_kwargs: dict = dict(),
+        nsp_timestamp_field: Optional[str] = None,
+        nsp_timestamp_kwargs: dict = dict(),
         smoothing_kwargs: dict = dict(),
         unit_dim: int = 0,
-        clock: Literal["redis", "nsp"] = "nsp",
+        clock: Literal["redis", "nsp"] = "redis",
         buffer_gb: Optional[float] = None,
     ):
         """Initialize the RedisStreamRecordingExtractor
@@ -41,11 +41,9 @@ class RedisStreamSortingExtractor(BaseSorting):
         data_field : bytes or str
             Key or field within each Redis stream entry that
             contains the recording data
-        dtype : str, type, or numpy.dtype
+        data_dtype : str, type, or numpy.dtype
             The dtype of the data. Assumed to be a numeric type
             recognized by numpy, e.g. int8, float32, etc.
-        unit_count : int
-            Number of units
         unit_ids : list, optional
             List of ids for each unit
         frames_per_entry : int, default: 1
@@ -54,21 +52,35 @@ class RedisStreamSortingExtractor(BaseSorting):
         sampling_frequency : float, optional
             The sampling frequency of the data in Hz. See
             `RedisExtractorMixin`
-        timestamp_source : bytes or str, optional
-            The source of the timestamp information in the Redis
-            stream. See `RedisExtractorMixin`
-        timestamp_kwargs : dict, default: {}
-            If timestamp source is not "redis", then timestamp_kwargs
-            must contain the unit, dtype, and encoding of the timestamp
-            data, and optionally smoothing parameters. See
-            `RedisExtractorMixin`
+        nsp_timestamp_field : bytes or str, optional
+            The field name of additional timestamps in the Redis
+            stream entries. Redis timestamps will always be loaded
+            and saved, but if `nsp_timestamp_field` is provided,
+            the additional timestamps can be saved as well.
+        nsp_timestamp_kwargs : dict, default: {}
+            Necessary kwargs for reading the additional timestamps.
+            See `get_stream_ids_and_timestamps()`.
+        smoothing_kwargs : dict, default: {}
+            Parameters for `utils.timestamps.smooth_timestamps()`.
+            Timestamp smoothing is currently only applied to the Redis
+            timestamps
         unit_dim : int, default: 0
             If frames_per_entry > 1, then unit_dim indicates the
             axis ordering of the data in each entry. If unit_dim
-            = 0, then the data is assumed to originally be of shape
-            (unit_count, frames_per_entry). If unit_dim = 1,
-            then the data is assumed to originally be of shape
+            = 0, then the data are assumed to originally be of shape
+            (unit_count, frames_per_entry). If channel_dim = 1,
+            then the data are assumed to originally be of shape
             (frames_per_entry, unit_count)
+        clock : {"redis", "nsp"}, default: "redis"
+            Which clock to use for spike times. If "redis",
+            the real-time Redis timestamps will be used. If
+            "nsp", the NSP timestamps will be used. The
+            clock can be toggled after initialization
+            with `RedisStreamSortingExtractor.set_clock()`
+        buffer_gb : float, optional
+            The amount of data to read simultaneously when
+            iterating through the Redis stream, in gb. If `None`, the
+            entire stream will be read from Redis at once
         """
         # Instantiate Redis client and check connection
         self._client = redis.Redis(
@@ -87,9 +99,9 @@ class RedisStreamSortingExtractor(BaseSorting):
             client=self._client,
             stream_name=stream_name,
             frames_per_entry=frames_per_entry,
-            timestamp_field=timestamp_field,
+            timestamp_field=nsp_timestamp_field,
             buffer_gb=buffer_gb,
-            **timestamp_kwargs,
+            **nsp_timestamp_kwargs,
         )
         if smoothing_kwargs:
             timestamps = smooth_timestamps(
@@ -339,13 +351,17 @@ class RedisStreamSortingSegment(BaseSortingSegment):
             start time
         sampling_frequency : float, optional
             The sampling frequency of the data in the segment
-        channel_dim : int, default: 0
-            If frames_per_entry > 1, then channel_dim indicates the
-            axis ordering of the data in each entry. If channel_dim
-            = 0, then the data is assumed to originally be of shape
-            (channel_count, frames_per_entry). If channel_dim = 1,
-            then the data is assumed to originally be of shape
-            (frames_per_entry, channel_count)
+        unit_dim : int, default: 0
+            If frames_per_entry > 1, then unit_dim indicates the
+            axis ordering of the data in each entry. If unit_dim
+            = 0, then the data are assumed to originally be of shape
+            (unit_count, frames_per_entry). If channel_dim = 1,
+            then the data are assumed to originally be of shape
+            (frames_per_entry, unit_count)
+        buffer_gb : float, optional
+            The amount of data to read simultaneously when
+            iterating through the Redis stream, in gb. If `None`, the
+            entire stream will be read from Redis at once
         """
         # initialize base class
         BaseSortingSegment.__init__(self, t_start=t_start)

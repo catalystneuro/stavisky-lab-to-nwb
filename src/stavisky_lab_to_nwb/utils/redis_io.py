@@ -20,10 +20,12 @@ def buffer_gb_to_entry_count(
 ):
     if buffer_gb is None:
         return None
+    if buffer_gb <= 0.0:
+        raise ValueError(f"`buffer_gb` should be > 0, got {buffer_gb}")
     entry = client.xrange(stream_name, count=1)[0]
     entry_bytes = sys.getsizeof(entry[0]) + sys.getsizeof(entry[1]) + sum([sys.getsizeof(v) for v in entry[1].values()])
     buffer_bytes = buffer_gb * 1e9
-    count = max(buffer_bytes // entry_bytes, 1)  # read at least 1 entry
+    count = int(max(buffer_bytes // entry_bytes, 1))  # read at least 1 entry
     return count
 
 
@@ -82,9 +84,9 @@ def read_stream_fields(
     min_id = min_id or "-"
     max_id = max_id or "+"
     count = buffer_gb_to_entry_count(client=client, stream_name=stream_name, buffer_gb=buffer_gb)
-    field = list(field_data.keys())[0]
+    check_field = list(field_data.keys())[0]
     stream_entries = client.xrange(stream_name, min=min_id, max=max_id, count=count)
-    while len(stream_entries) > 0 and len(field_data[field]) < max_stream_len:
+    while len(stream_entries) > 0 and len(field_data[check_field]) < max_stream_len:
         # get ids if desired
         if return_ids:
             field_data["ids"] += [entry[0] for entry in stream_entries]
