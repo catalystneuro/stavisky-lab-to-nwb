@@ -53,7 +53,7 @@ class MultiTableWidget(widgets.VBox):
             self.children = [widgets.HTML("No sessions found")]
             return
         if len(self.names) == 1:
-            self.children = [DataGrid(tables[0])]
+            self.children = [DataGrid(tables[0], auto_fit_columns=True)]
             return
 
         self.session_controller = widgets.Dropdown(
@@ -63,17 +63,12 @@ class MultiTableWidget(widgets.VBox):
             disabled=False,
         )
 
-        self.children = [self.session_controller, DataGrid(self.tables[0])]
+        self.children = [self.session_controller, DataGrid(self.tables[0], auto_fit_columns=True)]
 
         def on_dropdown_update(change):
-            self.children = [self.session_controller, DataGrid(self.tables[change.new])]
+            self.children = [self.session_controller, DataGrid(self.tables[change.new], auto_fit_columns=True)]
 
         self.session_controller.observe(on_dropdown_update, names="value")
-
-
-#     def update(self, session: str):
-#         idx = self.names.index(session)
-#         return DataGrid(self.tables[idx])
 
 
 class DecodingErrorWidget(widgets.Tab):
