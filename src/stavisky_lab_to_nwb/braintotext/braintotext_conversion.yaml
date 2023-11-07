@@ -3,12 +3,12 @@
 # This YAML file specifies exactly how the `BrainToTextNWBConverter` should
 # convert experimental data from Redis to NWB. Top-level keys correspond to
 # interface names from `BrainToTextConverter.data_interface_classes`. Then,
-# each interface as `source_data` and `conversion_options` dicts, which 
+# each interface as `source_data` and `conversion_options` dicts, which
 # specify the arguments for initializing and running conversion, respectively,
 # for each interface. Please refer to the individual interfaces' `__init__`
 # and `add_to_nwbfile` methods for extensive documentation on those arguments.
-# 
-# Due to the strict type-checking of `neuroconv`, if you want to set an 
+#
+# Due to the strict type-checking of `neuroconv`, if you want to set an
 # optional argument to its default, `None`, you should comment out the line
 # instead of setting it to `null`.
 

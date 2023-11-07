@@ -62,7 +62,7 @@ Each conversion is organized in a directory of its own in the `src` directory, w
         │       └── __init__.py
         │   └── widgets
         │       ├── braintotext_widgets.py
-        
+
         │       └── widgets_requirements.txt
 
         └── __init__.py
