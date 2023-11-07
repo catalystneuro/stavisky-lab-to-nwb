@@ -51,15 +51,19 @@ Each conversion is organized in a directory of its own in the `src` directory, w
         │   │   ├── redis_io.py
         │   │   ├── timestamps.py
         │   │   └── __init__.py
-        │   └── braintotext
-        │       ├── braintotext_convert_session.py
-        │       ├── braintotext_conversion.yml
-        │       ├── braintotext_metadata.yml
-        │       ├── braintotextnwbconverter.py
-        │       ├── braintotext_requirements.txt
-        │       ├── braintotext_notes.md
+        │   ├── braintotext
+        │   │   ├── braintotext_convert_session.py
+        │   │   ├── braintotext_conversion.yml
+        │   │   ├── braintotext_metadata.yml
+        │   │   ├── braintotextnwbconverter.py
+        │   │   ├── braintotext_requirements.txt
+        │   │   ├── braintotext_notes.md
 
         │       └── __init__.py
+        │   └── widgets
+        │       ├── braintotext_widgets.py
+        
+        │       └── widgets_requirements.txt
 
         └── __init__.py
 
@@ -79,7 +83,9 @@ To run a specific conversion, you might need to install first some conversion sp
 pip install -r src/stavisky_lab_to_nwb/braintotext/braintotext_requirements.txt
 ```
 
-With your Redis server running, you can run a specific conversion with the following command:
+You can then edit the experiment metadata as desired in the file `src/stavisky_lab_to_nwb/braintotext/braintotext_metadata.yaml`.
+
+Finally, with your Redis server running, you can run a specific conversion with the following command:
 ```
 python src/stavisky_lab_to_nwb/braintotext/braintotext_convert_session.py
 ```
@@ -94,14 +100,14 @@ The `braintotext` conversion function can be found in `src/stavisky_lab_to_nwb/b
 * output_dir_path: path to where you want to save the output NWB file
 * source_data: overrides for source data configuration
 * conversion_options: overrides for conversion option configuration
-* stub_test: whether to convert and save only a portion of the data, useful only for testing purposes
+* stub_test: whether to convert and save only a portion of the data, used only for testing purposes
 * exclude_interfaces: list of names of interfaces to exclude from the conversion
 
 User configuration of the conversions primarily involves editing/creating YAML files. The first YAML file, `braintotext_metadata.yml`, containes experimental metadata, like subject age, that should be provided by the experimenter (if appropriate to share). The other YAML file, `braintotext_conversion.yml`, essentially specifies all keyword arguments necessary to instantiate and run the data interfaces used to read, convert, and write data.
 
 Each data interface is defined in `braintotextnwbconverter.py`, where `BrainToTextNWBConverter.data_interface_classes` specifies the class for each interface. Each top-level entry in `braintotext_conversion.yml` corresponds to one of these interfaces, with sub-dictionaries `source_data` for instantiating the class and `conversion_options` for configuring how it converts the data. For each interface, you can find more documentation on the accepted kwargs in their respective files, specifically their `__init__` functions for `source_data` and their `add_to_nwbfile` functions for `conversion_options`.
 
-To change the configuration for `session_to_nwb`, you can modify `braintotext_conversion.yml`, create a new YAML file and point to it with the `conversion_config_path` argument, or override specific kwargs programmatically with the `source_data` and `conversion_options` arguments. To remove certain data interfaces from the conversion, you can again modify/create YAML files to comment out or remove particular interfaces, or you can use the `exclude_interfaces` argument. Note that you do not need to edit `braintotextnwbconverter.py`, since interfaces will simply not be instantiated if no source data is provided for them ,even if they are still in `BrainToTextNWBConverter.data_interface_classes`. In general, we recommend using YAML files to modify the conversion.
+To change the configuration for `session_to_nwb`, you can modify `braintotext_conversion.yml`, create a new YAML file and point to it with the `conversion_config_path` argument, or override specific kwargs programmatically with the `source_data` and `conversion_options` arguments. To remove certain data interfaces from the conversion, you can again modify/create YAML files to comment out or remove particular interfaces, or you can use the `exclude_interfaces` argument. Note that you do not need to edit `braintotextnwbconverter.py`, since interfaces will simply not be instantiated if no source data is provided for them, even if they are still in `BrainToTextNWBConverter.data_interface_classes`. In general, we recommend using YAML files to modify the conversion.
 
 
 

@@ -3,11 +3,18 @@ NWBFile:
 #     - https://doi.org/###
 #   session_description: # Currently extracted from Redis
 #     A rich text description of the experiment. Can also just be the abstract of the publication.
+#   experiment_description: # optional but recommended
+#     If used, should be a general description of the experiment. Then, session_description can
+#     be used for session-specific details
   institution: University of California, Davis
   lab: Stavisky
   experimenter: # TODO: add all experimenters
     - Card, Nicholas
-Subject: # TODO: replace dummy values
+#   keywords: # optional but recommended, to improve searchability
+#     - human BCI
+Subject: # TODO: replace dummy values (depending on privacy requirements)
   species: Homo sapiens
-  age: P60Y
-  sex: M
+  age: P60Y # ISO 8601 format. if can't be provided, then use an age range with the syntax "{lower}/{upper}".
+            # one-sided ranges are possible, e.g. "P60Y/" for any age equal to or above 60 years old
+  sex: M # if can't be provided, then change to "U" for unknown
+  # description: # optional but recommended

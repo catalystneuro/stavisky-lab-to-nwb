@@ -1,3 +1,17 @@
+# Brain-to-text data conversion configuration
+#
+# This YAML file specifies exactly how the `BrainToTextNWBConverter` should
+# convert experimental data from Redis to NWB. Top-level keys correspond to
+# interface names from `BrainToTextConverter.data_interface_classes`. Then,
+# each interface as `source_data` and `conversion_options` dicts, which 
+# specify the arguments for initializing and running conversion, respectively,
+# for each interface. Please refer to the individual interfaces' `__init__`
+# and `add_to_nwbfile` methods for extensive documentation on those arguments.
+# 
+# Due to the strict type-checking of `neuroconv`, if you want to set an 
+# optional argument to its default, `None`, you should comment out the line
+# instead of setting it to `null`.
+
 Recording:
   # interface: StaviskyRecordingInterface (`general_interfaces/staviskyrecordinginterface.py`)
   source_data:
@@ -5,7 +19,7 @@ Recording:
     stream_name: "continuousNeural" # string
     data_field: "samples" # string
     data_dtype: "int16" # string
-    # channel_ids: null # list, optional
+    # channel_ids: # list, optional
     frames_per_entry: 30 # int, optional
     sampling_frequency: 30000.0 # float, optional
     nsp_timestamp_field: "timestamps" # string, optional
@@ -13,7 +27,7 @@ Recording:
       timestamp_dtype: "int64" # string
       timestamp_encoding: "buffer" # string
       timestamp_conversion: 3.3333333333333335e-05 # float
-      timestamp_index: null # int or None
+      # timestamp_index: # int or None
     smoothing_kwargs: # dict, optional
       window_len: "max" # int or "max"
       enforce_causal: True # bool
@@ -31,9 +45,9 @@ Sorting:
     stream_name: "binnedFeatures_10ms" # string
     data_field: "threshold_crossings" # string
     data_dtype: "int16" # string
-    # unit_ids: null # list, optional
+    # unit_ids: # list, optional
     frames_per_entry: 1 # int, optional
-    # sampling_frequency: null # float, optional
+    # sampling_frequency: # float, optional
     nsp_timestamp_field: "input_nsp_timestamp" # string, optional
     nsp_timestamp_kwargs: # dict, optional
       timestamp_dtype: "int64" # string
@@ -43,7 +57,7 @@ Sorting:
     smoothing_kwargs: {} # dict, optional
     unit_dim: 0 # int, optional
     clock: "nsp" # string, optional
-    # buffer_gb: null # float, optional
+    # buffer_gb: # float, optional
   conversion_options:
     units_description: "Unsorted threshold crossings binned at 10 ms resolution for each recording channel." # string
     write_as: "processing" # string, optional
@@ -69,7 +83,7 @@ Audio:
       enforce_causal: True # bool
       sampling_frequency: 30000.0 # float
     load_timestamps: True # bool, optional
-    # buffer_gb: null # float, optional
+    # buffer_gb: # float, optional
   conversion_options: {}
 
 SpikingBandPower10ms:
@@ -91,7 +105,7 @@ SpikingBandPower10ms:
       timestamp_index: 0 # int or None
     smoothing_kwargs: {} # dict, optional
     load_timestamps: True # bool, optional
-    # buffer_gb: null # float, optional
+    # buffer_gb: # float, optional
   conversion_options: {}
 
 SpikingBandPower20ms:
@@ -113,7 +127,7 @@ SpikingBandPower20ms:
       timestamp_index: 0 # int or None
     smoothing_kwargs: {} # dict, optional
     load_timestamps: True # bool, optional
-    # buffer_gb: null # float, optional
+    # buffer_gb: # float, optional
   conversion_options: {}
 
 FilteredRecording:
@@ -159,7 +173,7 @@ SmoothedSpikingBandPower:
       timestamp_index: 0 # int or None
     smoothing_kwargs: {} # dict, optional
     load_timestamps: True # bool, optional
-    # buffer_gb: null # float, optional
+    # buffer_gb: # float, optional
   conversion_options: {}
 
 SmoothedThreshCrossing:
@@ -181,7 +195,7 @@ SmoothedThreshCrossing:
       timestamp_index: 0 # int or None
     smoothing_kwargs: {} # dict, optional
     load_timestamps: True # bool, optional
-    # buffer_gb: null # float, optional
+    # buffer_gb: # float, optional
   conversion_options: {}
 
 PhonemeLogits:
