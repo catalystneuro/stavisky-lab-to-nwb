@@ -1,4 +1,5 @@
 """Class for converting generic ecephys data."""
+
 import json
 import redis
 import numpy as np

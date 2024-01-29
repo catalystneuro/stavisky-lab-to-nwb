@@ -1,4 +1,5 @@
 """Redis recording extractor."""
+
 import redis
 import numpy as np
 from typing import Union, Optional, Literal

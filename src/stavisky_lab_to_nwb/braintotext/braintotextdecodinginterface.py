@@ -1,4 +1,5 @@
 """Primary classes for converting Stavisky decoding data."""
+
 import redis
 import numpy as np
 from pynwb import NWBFile, TimeSeries
