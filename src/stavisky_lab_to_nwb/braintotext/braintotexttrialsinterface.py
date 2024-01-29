@@ -1,4 +1,5 @@
 """Primary class for converting trial data."""
+
 import redis
 import numpy as np
 import pandas as pd

@@ -1,4 +1,5 @@
 """General recording interface for Redis stream data."""
+
 import redis
 import json
 import numpy as np

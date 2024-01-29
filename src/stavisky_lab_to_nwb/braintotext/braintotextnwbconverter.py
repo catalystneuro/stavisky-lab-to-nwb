@@ -1,4 +1,5 @@
 """Primary NWBConverter class for this dataset."""
+
 import inspect
 from pathlib import Path
 from pynwb import NWBFile

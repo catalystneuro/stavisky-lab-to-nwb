@@ -1,4 +1,5 @@
 """General sorting interface for Redis stream data."""
+
 import redis
 import numpy as np
 from pynwb import NWBFile

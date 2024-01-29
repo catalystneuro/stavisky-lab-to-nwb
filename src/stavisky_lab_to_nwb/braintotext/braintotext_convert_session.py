@@ -1,4 +1,5 @@
 """Primary script to run to convert an entire session for of data using the NWBConverter."""
+
 from pathlib import Path
 from typing import Union
 import datetime
